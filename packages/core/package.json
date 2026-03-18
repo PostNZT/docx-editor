@@ -1,6 +1,6 @@
 {
   "name": "@eigenpal/docx-core",
-  "version": "0.0.1",
+  "version": "0.0.28",
   "description": "Framework-agnostic core for DOCX parsing, editing, and rendering",
   "type": "module",
   "main": "./dist/core.cjs",
