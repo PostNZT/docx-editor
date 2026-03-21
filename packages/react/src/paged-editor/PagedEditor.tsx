@@ -107,7 +107,7 @@ import { useVisualLineNavigation } from './useVisualLineNavigation';
 import { useDragAutoScroll } from './useDragAutoScroll';
 
 // Sidebar constants
-import { SIDEBAR_DOCUMENT_SHIFT } from '../components/CommentsSidebar';
+import { SIDEBAR_DOCUMENT_SHIFT } from '../components/sidebar/constants';
 
 // Types
 import type {

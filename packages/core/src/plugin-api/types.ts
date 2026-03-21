@@ -171,3 +171,38 @@ export interface EditorPluginCore<TState = any> {
    */
   styles?: string;
 }
+
+/**
+ * A sidebar item anchored to a document position.
+ * Framework adapters extend this with rendering capabilities.
+ */
+export interface SidebarItem {
+  /** Unique ID for this item (used as React key and for overlap resolution). */
+  id: string;
+
+  /** ProseMirror document position this item anchors to. */
+  anchorPos: number;
+
+  /** Optional key into the anchorPositions Map (e.g. "comment-42", "revision-7"). */
+  anchorKey?: string;
+
+  /** Sort priority within items at the same anchor Y. Lower = first. Default: 0. */
+  priority?: number;
+
+  /** Temporary items (e.g. "add comment" input) skip entrance animation. */
+  isTemporary?: boolean;
+
+  /** Pre-computed Y position (scroll-container coords, pre-zoom). Overrides anchor resolution. */
+  fixedY?: number;
+}
+
+/**
+ * Context provided to plugins when computing sidebar items.
+ */
+export interface SidebarItemContext {
+  editorView: EditorView | null;
+  renderedDomContext: RenderedDomContext | null;
+  /** Pre-computed Y positions from layout engine (keys like "comment-{id}"). */
+  anchorPositions: Map<string, number>;
+  zoom: number;
+}
