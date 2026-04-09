@@ -608,9 +608,13 @@ export function getPositionRect(
     lineY += measure.lines[i]?.lineHeight ?? 0;
   }
 
+  // Caret height should match font size (ascent + descent), not line spacing
+  const caretHeight = line.ascent + line.descent;
+  const caretYOffset = (line.lineHeight - caretHeight) / 2;
+
   return {
     x: fragmentX + indentLeft + alignmentOffset + result.x,
-    y: fragmentY + lineY,
-    height: line.lineHeight,
+    y: fragmentY + lineY + caretYOffset,
+    height: caretHeight,
   };
 }
