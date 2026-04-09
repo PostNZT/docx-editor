@@ -433,22 +433,31 @@ function getPageSize(sectionProps: SectionProperties | null | undefined): {
  * Extract margins from section properties or use defaults.
  */
 function getMargins(sectionProps: SectionProperties | null | undefined): PageMargins {
-  const top = sectionProps?.marginTop ? twipsToPixels(sectionProps.marginTop) : DEFAULT_MARGINS.top;
-  const bottom = sectionProps?.marginBottom
-    ? twipsToPixels(sectionProps.marginBottom)
-    : DEFAULT_MARGINS.bottom;
-
+  // IMPORTANT: Use !== undefined instead of truthiness checks.
+  // Margin values can legitimately be 0 (e.g., COS documents with marginLeft=0).
+  // Using truthiness (e.g., `value ? ... : default`) treats 0 as falsy,
+  // incorrectly falling through to the default margin (96px = 1 inch).
   return {
-    top,
-    right: sectionProps?.marginRight
-      ? twipsToPixels(sectionProps.marginRight)
-      : DEFAULT_MARGINS.right,
-    bottom,
-    left: sectionProps?.marginLeft ? twipsToPixels(sectionProps.marginLeft) : DEFAULT_MARGINS.left,
-    // Header/footer distances - where the header/footer content starts
-    // Default to 0.5 inch (48px at 96 DPI) if not specified
-    header: sectionProps?.headerDistance ? twipsToPixels(sectionProps.headerDistance) : 48,
-    footer: sectionProps?.footerDistance ? twipsToPixels(sectionProps.footerDistance) : 48,
+    top:
+      sectionProps?.marginTop !== undefined
+        ? twipsToPixels(sectionProps.marginTop)
+        : DEFAULT_MARGINS.top,
+    right:
+      sectionProps?.marginRight !== undefined
+        ? twipsToPixels(sectionProps.marginRight)
+        : DEFAULT_MARGINS.right,
+    bottom:
+      sectionProps?.marginBottom !== undefined
+        ? twipsToPixels(sectionProps.marginBottom)
+        : DEFAULT_MARGINS.bottom,
+    left:
+      sectionProps?.marginLeft !== undefined
+        ? twipsToPixels(sectionProps.marginLeft)
+        : DEFAULT_MARGINS.left,
+    header:
+      sectionProps?.headerDistance !== undefined ? twipsToPixels(sectionProps.headerDistance) : 48,
+    footer:
+      sectionProps?.footerDistance !== undefined ? twipsToPixels(sectionProps.footerDistance) : 48,
   };
 }
 

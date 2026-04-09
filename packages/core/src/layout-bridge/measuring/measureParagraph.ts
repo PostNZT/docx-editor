@@ -35,9 +35,13 @@ const DEFAULT_FONT_SIZE = 11; // 11pt (Word 2007+ default)
 const DEFAULT_FONT_FAMILY = 'Calibri';
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.0; // OOXML spec default: single spacing (line=240)
 
-// Floating-point tolerance for line breaking (0.5px)
-// Prevents premature line breaks due to measurement rounding
-const WIDTH_TOLERANCE = 0.5;
+// Tolerance for line breaking (2px).
+// Canvas text measurement can differ from the browser's actual text rendering
+// by 1-2px due to font metric differences, sub-pixel rounding, and font
+// substitution. A 2px tolerance prevents premature line breaks on tight lines
+// where the text barely fits the available width (common in legal documents
+// with large paragraph indents).
+const WIDTH_TOLERANCE = 2.0;
 
 /**
  * Compute the width a tab character should advance to reach the next tab stop.
