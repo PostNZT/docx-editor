@@ -124,10 +124,13 @@
   line-height: normal;
 }
 
+/* Target only the contenteditable spans where the caret lives.
+   The caret height matches the element's line-height. Setting line-height: 1
+   on the span makes the caret match the font's natural height, while the
+   paragraph container retains its OOXML line spacing (e.g., double spacing)
+   for correct vertical layout via inline styles from the layout-painter. */
 .paged-editor__pages .docx-run-editable[contenteditable='true'],
-.paged-editor__pages .docx-paragraph-empty [contenteditable='true'],
-.paged-editor__pages .docx-paragraph,
-.paged-editor__pages .docx-paragraph-editable {
+.paged-editor__pages .docx-paragraph-empty [contenteditable='true'] {
   line-height: 1;
 }
 
