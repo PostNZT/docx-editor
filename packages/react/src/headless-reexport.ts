@@ -1,5 +1,5 @@
 /**
- * Re-export of @eigenpal/docx-core/headless for backwards compatibility.
- * Users who imported from '@eigenpal/docx-js-editor/headless' will continue to work.
+ * Re-export of @postnzt/docx-core/headless for backwards compatibility.
+ * Users who imported from '@postnzt/docx-js-editor/headless' will continue to work.
  */
-export * from '@eigenpal/docx-core/headless';
+export * from '@postnzt/docx-core/headless';

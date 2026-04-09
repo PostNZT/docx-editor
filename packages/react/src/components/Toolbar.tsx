@@ -20,7 +20,7 @@ import type {
   ParagraphAlignment,
   Style,
   Theme,
-} from '@eigenpal/docx-core/types/document';
+} from '@postnzt/docx-core/types/document';
 import { Button } from './ui/Button';
 import { Tooltip } from './ui/Tooltip';
 import { MenuDropdown } from './ui/MenuDropdown';

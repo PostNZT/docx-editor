@@ -1,5 +1,5 @@
 {
-  "name": "@eigenpal/docx-editor-vue",
+  "name": "@postnzt/docx-editor-vue",
   "version": "0.0.1",
   "private": true,
   "description": "Vue.js wrapper for the DOCX editor - community contributed",
@@ -25,7 +25,7 @@
     "vue": "^3.0.0"
   },
   "dependencies": {
-    "@eigenpal/docx-core": "workspace:*"
+    "@postnzt/docx-core": "workspace:*"
   },
   "keywords": [
     "docx",

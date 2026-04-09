@@ -8,8 +8,8 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import type { ReactNode } from 'react';
-import type { ColorValue, ParagraphAlignment } from '@eigenpal/docx-core/types/document';
-import { resolveColor } from '@eigenpal/docx-core/utils/colorResolver';
+import type { ColorValue, ParagraphAlignment } from '@postnzt/docx-core/types/document';
+import { resolveColor } from '@postnzt/docx-core/utils/colorResolver';
 import { FontPicker } from './ui/FontPicker';
 import { FontSizePicker, halfPointsToPoints } from './ui/FontSizePicker';
 import { AdvancedColorPicker } from './ui/AdvancedColorPicker';

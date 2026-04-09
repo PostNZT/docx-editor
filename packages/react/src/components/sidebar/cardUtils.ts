@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { Paragraph } from '@eigenpal/docx-core/types/content';
+import type { Paragraph } from '@postnzt/docx-core/types/content';
 
 /** Extract plain text from a Comment's paragraph content. */
 export function getCommentText(paragraphs?: Paragraph[]): string {

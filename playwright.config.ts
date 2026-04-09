@@ -37,7 +37,7 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // TODO: Add 'vue' project when @eigenpal/docx-editor-vue has a working editor
+    // TODO: Add 'vue' project when @postnzt/docx-editor-vue has a working editor
     // {
     //   name: 'vue',
     //   use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5174' },

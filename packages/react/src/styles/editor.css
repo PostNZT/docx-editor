@@ -88,6 +88,54 @@
 }
 
 /* ============================================================================
+ * EXTERNAL CSS FRAMEWORK ISOLATION
+ *
+ * The layout-painter renders document content using inline styles on divs/spans.
+ * External CSS resets (e.g., Tailwind CSS preflight) can interfere because:
+ *   - Tailwind sets border-width: 0 on * (hides table borders)
+ *   - Tailwind sets line-height: 1.5 on html (inflates caret height)
+ *   - Tailwind sets border-collapse: collapse on table (affects spacing)
+ *   - Tailwind sets img { display: block } (breaks inline images)
+ *
+ * This section resets these properties within the editor's page content area
+ * so the layout-painter's inline styles work correctly regardless of the
+ * consuming app's CSS framework.
+ * ============================================================================ */
+
+/* Reset border properties on all elements within the document content area.
+   Tailwind's * { border-width: 0; border-style: solid } would otherwise
+   prevent the layout-painter's inline border styles from rendering correctly
+   on table cells and other bordered elements. */
+.paged-editor__pages *,
+.paged-editor__pages *::before,
+.paged-editor__pages *::after {
+  border-width: revert;
+  border-style: revert;
+  border-color: revert;
+  box-sizing: border-box;
+}
+
+/* Reset line-height within document pages. Tailwind sets html { line-height: 1.5 }
+   which cascades into contenteditable elements and inflates the caret. The
+   layout-painter sets explicit line-height via inline styles where needed. */
+.paged-editor__pages {
+  line-height: normal;
+}
+
+/* Reset table-related properties */
+.paged-editor__pages table {
+  border-collapse: revert;
+  border-spacing: revert;
+  text-indent: revert;
+}
+
+/* Reset image display — Tailwind sets img { display: block } which breaks
+   inline images within document content */
+.paged-editor__pages img {
+  display: revert;
+}
+
+/* ============================================================================
  * CURSOR / CARET STYLING
  * ============================================================================ */
 

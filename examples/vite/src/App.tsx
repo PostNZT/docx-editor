@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { DocxEditor, type DocxEditorRef, createEmptyDocument } from '@eigenpal/docx-js-editor';
+import { DocxEditor, type DocxEditorRef, createEmptyDocument } from '@postnzt/docx-js-editor';
 import { ExampleSwitcher } from '../../shared/ExampleSwitcher';
 import { GitHubBadge } from '../../shared/GitHubBadge';
 

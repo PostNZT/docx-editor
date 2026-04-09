@@ -22,19 +22,19 @@ import { useTranslation } from '../i18n';
 import { EditorView } from 'prosemirror-view';
 import { undo, redo } from 'prosemirror-history';
 
-import { schema } from '@eigenpal/docx-core/prosemirror/schema';
-import { headerFooterToProseDoc } from '@eigenpal/docx-core/prosemirror/conversion/toProseDoc';
-import { proseDocToBlocks } from '@eigenpal/docx-core/prosemirror/conversion/fromProseDoc';
-import { extractSelectionState, type SelectionState } from '@eigenpal/docx-core/prosemirror';
-import { createStarterKit } from '@eigenpal/docx-core/prosemirror/extensions/StarterKit';
-import { ExtensionManager } from '@eigenpal/docx-core/prosemirror/extensions/ExtensionManager';
-import { createStyleResolver } from '@eigenpal/docx-core/prosemirror';
+import { schema } from '@postnzt/docx-core/prosemirror/schema';
+import { headerFooterToProseDoc } from '@postnzt/docx-core/prosemirror/conversion/toProseDoc';
+import { proseDocToBlocks } from '@postnzt/docx-core/prosemirror/conversion/fromProseDoc';
+import { extractSelectionState, type SelectionState } from '@postnzt/docx-core/prosemirror';
+import { createStarterKit } from '@postnzt/docx-core/prosemirror/extensions/StarterKit';
+import { ExtensionManager } from '@postnzt/docx-core/prosemirror/extensions/ExtensionManager';
+import { createStyleResolver } from '@postnzt/docx-core/prosemirror';
 import type {
   HeaderFooter,
   Paragraph,
   Table,
   StyleDefinitions,
-} from '@eigenpal/docx-core/types/document';
+} from '@postnzt/docx-core/types/document';
 
 import 'prosemirror-view/style/prosemirror.css';
 

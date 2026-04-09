@@ -17,8 +17,8 @@
     "declarationMap": true,
     "baseUrl": ".",
     "paths": {
-      "@eigenpal/docx-core": ["../core/src/core.ts"],
-      "@eigenpal/docx-core/headless": ["../core/src/headless.ts"]
+      "@postnzt/docx-core": ["../core/src/core.ts"],
+      "@postnzt/docx-core/headless": ["../core/src/headless.ts"]
     }
   },
   "include": ["src"],

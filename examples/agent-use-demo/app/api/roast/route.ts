@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { DocxReviewer } from '@eigenpal/docx-editor-agents';
+import { DocxReviewer } from '@postnzt/docx-editor-agents';
 
 const openai = new OpenAI();
 const model = process.env.OPENAI_MODEL || 'gpt-4o';

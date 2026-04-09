@@ -36,8 +36,8 @@ import { SelectionOverlay } from './SelectionOverlay';
 import { ImageSelectionOverlay, type ImageSelectionInfo } from './ImageSelectionOverlay';
 
 // Layout engine
-import { layoutDocument } from '@eigenpal/docx-core/layout-engine';
-import type { ColumnLayout } from '@eigenpal/docx-core/layout-engine';
+import { layoutDocument } from '@postnzt/docx-core/layout-engine';
+import type { ColumnLayout } from '@postnzt/docx-core/layout-engine';
 import type {
   Layout,
   FlowBlock,
@@ -55,20 +55,20 @@ import type {
   ParagraphSpacing,
   TextBoxBlock,
   SectionBreakBlock,
-} from '@eigenpal/docx-core/layout-engine/types';
+} from '@postnzt/docx-core/layout-engine/types';
 import {
   DEFAULT_TEXTBOX_MARGINS,
   DEFAULT_TEXTBOX_WIDTH,
-} from '@eigenpal/docx-core/layout-engine/types';
+} from '@postnzt/docx-core/layout-engine/types';
 
 // Table commands (for quick-action insert buttons)
-import { addRowBelow, addColumnRight } from '@eigenpal/docx-core/prosemirror';
+import { addRowBelow, addColumnRight } from '@postnzt/docx-core/prosemirror';
 
 // Layout bridge
 import {
   toFlowBlocks,
   convertBorderSpecToLayout,
-} from '@eigenpal/docx-core/layout-bridge/toFlowBlocks';
+} from '@postnzt/docx-core/layout-bridge/toFlowBlocks';
 import {
   measureParagraph,
   resetCanvasContext,
@@ -76,30 +76,30 @@ import {
   getCachedParagraphMeasure,
   setCachedParagraphMeasure,
   type FloatingImageZone,
-} from '@eigenpal/docx-core/layout-bridge/measuring';
+} from '@postnzt/docx-core/layout-bridge/measuring';
 import {
   hitTestFragment,
   hitTestTableCell,
   getPageTop,
-} from '@eigenpal/docx-core/layout-bridge/hitTest';
-import { clickToPosition } from '@eigenpal/docx-core/layout-bridge/clickToPosition';
-import { clickToPositionDom } from '@eigenpal/docx-core/layout-bridge/clickToPositionDom';
+} from '@postnzt/docx-core/layout-bridge/hitTest';
+import { clickToPosition } from '@postnzt/docx-core/layout-bridge/clickToPosition';
+import { clickToPositionDom } from '@postnzt/docx-core/layout-bridge/clickToPositionDom';
 import {
   selectionToRects,
   getCaretPosition,
   type SelectionRect,
   type CaretPosition,
-} from '@eigenpal/docx-core/layout-bridge/selectionRects';
-import { findWordBoundaries } from '@eigenpal/docx-core/utils/textSelection';
+} from '@postnzt/docx-core/layout-bridge/selectionRects';
+import { findWordBoundaries } from '@postnzt/docx-core/utils/textSelection';
 
 // Layout painter
-import { LayoutPainter, type BlockLookup } from '@eigenpal/docx-core/layout-painter';
+import { LayoutPainter, type BlockLookup } from '@postnzt/docx-core/layout-painter';
 import {
   renderPages,
   type RenderPageOptions,
   type HeaderFooterContent,
   type FootnoteRenderItem,
-} from '@eigenpal/docx-core/layout-painter/renderPage';
+} from '@postnzt/docx-core/layout-painter/renderPage';
 
 // Selection sync
 import { LayoutSelectionGate } from './LayoutSelectionGate';
@@ -118,15 +118,15 @@ import type {
   StyleDefinitions,
   SectionProperties,
   HeaderFooter,
-} from '@eigenpal/docx-core/types/document';
-import type { Footnote } from '@eigenpal/docx-core/types/content';
-import { getFootnoteText } from '@eigenpal/docx-core/docx/footnoteParser';
+} from '@postnzt/docx-core/types/document';
+import type { Footnote } from '@postnzt/docx-core/types/content';
+import { getFootnoteText } from '@postnzt/docx-core/docx/footnoteParser';
 import {
   collectFootnoteRefs,
   mapFootnotesToPages,
   buildFootnoteContentMap,
   calculateFootnoteReservedHeights,
-} from '@eigenpal/docx-core/layout-bridge/footnoteLayout';
+} from '@postnzt/docx-core/layout-bridge/footnoteLayout';
 import type { RenderedDomContext } from '../plugin-api/types';
 import { createRenderedDomContext } from '../plugin-api/RenderedDomContext';
 
@@ -164,7 +164,7 @@ export interface PagedEditorProps {
   /** External ProseMirror plugins. */
   externalPlugins?: Plugin[];
   /** Extension manager for plugins/schema/commands (optional — falls back to default) */
-  extensionManager?: import('@eigenpal/docx-core/prosemirror/extensions/ExtensionManager').ExtensionManager;
+  extensionManager?: import('@postnzt/docx-core/prosemirror/extensions/ExtensionManager').ExtensionManager;
   /** Callback when editor is ready. */
   onReady?: (ref: PagedEditorRef) => void;
   /** Callback when rendered DOM context is ready. */

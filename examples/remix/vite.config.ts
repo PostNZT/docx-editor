@@ -25,9 +25,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      ...(isMonorepo
-        ? { '@eigenpal/docx-js-editor': path.join(monorepoRoot, 'src/index.ts') }
-        : {}),
+      ...(isMonorepo ? { '@postnzt/docx-js-editor': path.join(monorepoRoot, 'src/index.ts') } : {}),
     },
   },
   css: {

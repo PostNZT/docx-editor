@@ -6,8 +6,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { AIAction, AgentResponse } from '@eigenpal/docx-core/types/agentApi';
-import { getActionLabel } from '@eigenpal/docx-core/types/agentApi';
+import type { AIAction, AgentResponse } from '@postnzt/docx-core/types/agentApi';
+import { getActionLabel } from '@postnzt/docx-core/types/agentApi';
 import { useTranslation } from '../i18n';
 
 // ============================================================================

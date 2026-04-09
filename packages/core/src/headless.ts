@@ -6,8 +6,8 @@
  *
  * @example
  * ```ts
- * import { DocumentAgent, parseDocx, pluginRegistry } from '@eigenpal/docx-editor/headless';
- * import { docxtemplaterPlugin } from '@eigenpal/docx-editor/core-plugins';
+ * import { DocumentAgent, parseDocx, pluginRegistry } from '@postnzt/docx-editor/headless';
+ * import { docxtemplaterPlugin } from '@postnzt/docx-editor/core-plugins';
  *
  * // Register plugins
  * pluginRegistry.register(docxtemplaterPlugin);

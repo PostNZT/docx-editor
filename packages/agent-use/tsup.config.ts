@@ -14,6 +14,6 @@ export default defineConfig({
     preset: 'smallest',
   },
   minify: true,
-  noExternal: ['@eigenpal/docx-core'],
+  noExternal: ['@postnzt/docx-core'],
   external: ['prosemirror-model', 'prosemirror-state', 'prosemirror-view'],
 });

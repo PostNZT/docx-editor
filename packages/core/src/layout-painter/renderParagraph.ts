@@ -30,6 +30,41 @@ import {
 import { resolveFontFamily } from '../utils/fontResolver';
 
 /**
+ * Map OOXML underline style (w:u w:val) to CSS text-decoration-style.
+ * OOXML uses names like "single", "wave", "dashDotDotHeavy" while CSS
+ * expects "solid", "wavy", "dashed", etc.
+ */
+function mapUnderlineStyle(ooxmlStyle: string): string {
+  switch (ooxmlStyle) {
+    case 'single':
+    case 'thick':
+    case 'words':
+      return 'solid';
+    case 'double':
+      return 'double';
+    case 'dotted':
+    case 'dottedHeavy':
+      return 'dotted';
+    case 'dash':
+    case 'dashed':
+    case 'dashedHeavy':
+    case 'dashLong':
+    case 'dashLongHeavy':
+    case 'dashDot':
+    case 'dashDotHeavy':
+    case 'dashDotDot':
+    case 'dashDotDotHeavy':
+      return 'dashed';
+    case 'wave':
+    case 'wavyHeavy':
+    case 'wavyDouble':
+      return 'wavy';
+    default:
+      return 'solid';
+  }
+}
+
+/**
  * CSS class names for paragraph rendering
  */
 export const PARAGRAPH_CLASS_NAMES = {
@@ -147,7 +182,7 @@ function applyRunStyles(
     decorations.push('underline');
     if (typeof run.underline === 'object') {
       if (run.underline.style) {
-        element.style.textDecorationStyle = run.underline.style;
+        element.style.textDecorationStyle = mapUnderlineStyle(run.underline.style);
       }
       if (run.underline.color) {
         element.style.textDecorationColor = run.underline.color;

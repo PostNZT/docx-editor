@@ -1,11 +1,11 @@
 /**
- * @eigenpal/docx-js-editor/react
+ * @postnzt/docx-js-editor/react
  *
  * React entry point — DocxEditor component and renderAsync.
  *
  * @example
  * ```tsx
- * import { DocxEditor } from '@eigenpal/docx-js-editor/react';
+ * import { DocxEditor } from '@postnzt/docx-js-editor/react';
  * ```
  */
 
@@ -15,7 +15,7 @@
 
 export { DocxEditor, type DocxEditorProps, type DocxEditorRef } from './components/DocxEditor';
 export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
-export { type DocxInput, toArrayBuffer } from '@eigenpal/docx-core/utils/docxInput';
+export { type DocxInput, toArrayBuffer } from '@postnzt/docx-core/utils/docxInput';
 
 // ============================================================================
 // ERROR HANDLING

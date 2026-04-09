@@ -5,12 +5,12 @@
  * Import this file to include all editor styles:
  *
  * ```
- * import '@eigenpal/docx-editor/styles';
+ * import '@postnzt/docx-editor/styles';
  * ```
  *
  * Or import the CSS directly:
  * ```
- * import '@eigenpal/docx-editor/styles/editor.css';
+ * import '@postnzt/docx-editor/styles/editor.css';
  * ```
  */
 

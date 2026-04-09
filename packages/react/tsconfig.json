@@ -20,12 +20,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@eigenpal/docx-core": ["../core/src/core.ts"],
-      "@eigenpal/docx-core/headless": ["../core/src/headless.ts"],
-      "@eigenpal/docx-core/core-plugins": ["../core/src/core-plugins/index.ts"],
-      "@eigenpal/docx-core/mcp": ["../core/src/mcp/index.ts"],
-      "@eigenpal/docx-core/plugin-api/*": ["../core/src/plugin-api/*"],
-      "@eigenpal/docx-core/*": ["../core/src/*"]
+      "@postnzt/docx-core": ["../core/src/core.ts"],
+      "@postnzt/docx-core/headless": ["../core/src/headless.ts"],
+      "@postnzt/docx-core/core-plugins": ["../core/src/core-plugins/index.ts"],
+      "@postnzt/docx-core/mcp": ["../core/src/mcp/index.ts"],
+      "@postnzt/docx-core/plugin-api/*": ["../core/src/plugin-api/*"],
+      "@postnzt/docx-core/*": ["../core/src/*"]
     }
   },
   "include": ["src"],

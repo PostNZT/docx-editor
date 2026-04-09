@@ -17,7 +17,7 @@ export type {
   PositionCoordinates,
   SidebarItem,
   SidebarItemContext,
-} from '@eigenpal/docx-core/plugin-api/types';
+} from '@postnzt/docx-core/plugin-api/types';
 
 import type {
   EditorPluginCore,
@@ -25,7 +25,7 @@ import type {
   RenderedDomContext,
   SidebarItem,
   SidebarItemContext,
-} from '@eigenpal/docx-core/plugin-api/types';
+} from '@postnzt/docx-core/plugin-api/types';
 
 /**
  * React-specific editor plugin interface.

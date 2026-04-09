@@ -13,7 +13,7 @@
 
 import React from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { Table, TableCell, TableRow } from '@eigenpal/docx-core/types/document';
+import type { Table, TableCell, TableRow } from '@postnzt/docx-core/types/document';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useTranslation } from '../../i18n';
 

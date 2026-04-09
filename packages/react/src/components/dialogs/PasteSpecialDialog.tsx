@@ -9,8 +9,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { ParsedClipboardContent } from '@eigenpal/docx-core/utils/clipboard';
-import { readFromClipboard } from '@eigenpal/docx-core/utils/clipboard';
+import type { ParsedClipboardContent } from '@postnzt/docx-core/utils/clipboard';
+import { readFromClipboard } from '@postnzt/docx-core/utils/clipboard';
 import { useTranslation } from '../../i18n';
 import type { TranslationKey } from '../../i18n';
 

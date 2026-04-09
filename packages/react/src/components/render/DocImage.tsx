@@ -14,7 +14,7 @@
 
 import React from 'react';
 import type { CSSProperties } from 'react';
-import type { Image as ImageType } from '@eigenpal/docx-core/types/document';
+import type { Image as ImageType } from '@postnzt/docx-core/types/document';
 import {
   emuToPixels,
   isInlineImage,
@@ -25,7 +25,7 @@ import {
   getImageHeightPx,
   getWrapDistancesPx,
   isDecorativeImage,
-} from '@eigenpal/docx-core/docx/imageParser';
+} from '@postnzt/docx-core/docx/imageParser';
 
 /**
  * Props for the DocImage component
