@@ -417,6 +417,33 @@ function twipsToPixels(twips: number): number {
 }
 
 /**
+ * Compute caret height from a DOM element's computed font size.
+ * Returns a height matching the font's natural size (not the line height
+ * which includes spacing for double/triple spacing).
+ */
+function computeCaretHeightFromElement(
+  el: HTMLElement,
+  lineHeight: number
+): { height: number; yOffset: number } {
+  try {
+    const computed = el.ownerDocument?.defaultView?.getComputedStyle(el);
+    if (computed?.fontSize) {
+      const fontSizePx = parseFloat(computed.fontSize);
+      if (fontSizePx > 0) {
+        const caretHeight = fontSizePx;
+        const yOffset = Math.max(0, (lineHeight - caretHeight) / 2);
+        return { height: caretHeight, yOffset };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const caretHeight = Math.max(12, lineHeight * 0.6);
+  const yOffset = (lineHeight - caretHeight) / 2;
+  return { height: caretHeight, yOffset };
+}
+
+/**
  * Extract page size from section properties or use defaults.
  */
 function getPageSize(sectionProps: SectionProperties | null | undefined): {
@@ -2114,11 +2141,13 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
               const lineEl = spanEl.closest('.layout-line');
               const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+              // Caret height = font size (not line height which includes spacing)
+              const caretH = computeCaretHeightFromElement(spanEl, lineHeight);
 
               return {
                 x: (spanRect.left - overlayRect.left) / currentZoom,
-                y: (spanRect.top - overlayRect.top) / currentZoom,
-                height: lineHeight,
+                y: (spanRect.top - overlayRect.top) / currentZoom + caretH.yOffset / currentZoom,
+                height: caretH.height,
                 pageIndex,
               };
             }
@@ -2143,14 +2172,15 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             const pageEl = spanEl.closest('.layout-page');
             const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
 
-            // Get line height from the line element or use default
+            // Caret height = font size (not line height which includes spacing)
             const lineEl = spanEl.closest('.layout-line');
             const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+            const caretH = computeCaretHeightFromElement(spanEl, lineHeight);
 
             return {
               x: (rangeRect.left - overlayRect.left) / currentZoom,
-              y: (rangeRect.top - overlayRect.top) / currentZoom,
-              height: lineHeight,
+              y: (rangeRect.top - overlayRect.top) / currentZoom + caretH.yOffset / currentZoom,
+              height: caretH.height,
               pageIndex,
             };
           }
@@ -2171,11 +2201,12 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
             const lineEl = emptyRun.closest('.layout-line');
             const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+            const caretH = computeCaretHeightFromElement(emptyRun as HTMLElement, lineHeight);
 
             return {
               x: (runRect.left - overlayRect.left) / currentZoom,
-              y: (runRect.top - overlayRect.top) / currentZoom,
-              height: lineHeight,
+              y: (runRect.top - overlayRect.top) / currentZoom + caretH.yOffset / currentZoom,
+              height: caretH.height,
               pageIndex,
             };
           }
