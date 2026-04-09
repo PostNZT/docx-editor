@@ -314,9 +314,18 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   // For underlined tabs, use border-bottom instead of text-decoration.
   // This creates the visible line for decorative patterns like "Debtor.____/"
   // where tabs have underline:single formatting in the DOCX.
+  //
+  // To align the border-bottom with the text underline position, we shrink
+  // the tab's line-height to match the font so the bottom of the tab box
+  // sits at the descent line (close to the text underline) rather than at
+  // the full line-height bottom.
   if (run.underline) {
     // Remove text-decoration set by applyRunStyles (unreliable on inline-block)
     span.style.textDecorationLine = 'none';
+    // Shrink line-height to font-size so border-bottom aligns near the text
+    // underline position instead of the full line-height bottom.
+    span.style.lineHeight = '1';
+    span.style.verticalAlign = 'baseline';
     // Use border-bottom for reliable rendering
     const underlineColor =
       typeof run.underline === 'object' && run.underline.color
