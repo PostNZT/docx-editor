@@ -117,9 +117,18 @@
 
 /* Reset line-height within document pages. Tailwind sets html { line-height: 1.5 }
    which cascades into contenteditable elements and inflates the caret. The
-   layout-painter sets explicit line-height via inline styles where needed. */
+   layout-painter sets explicit line-height via inline styles where needed.
+   We set line-height: 1 on the content area and all contenteditable elements
+   so the caret height matches the font's natural ascent+descent. */
 .paged-editor__pages {
   line-height: normal;
+}
+
+.paged-editor__pages .docx-run-editable[contenteditable='true'],
+.paged-editor__pages .docx-paragraph-empty [contenteditable='true'],
+.paged-editor__pages .docx-paragraph,
+.paged-editor__pages .docx-paragraph-editable {
+  line-height: 1;
 }
 
 /* Reset table-related properties */
