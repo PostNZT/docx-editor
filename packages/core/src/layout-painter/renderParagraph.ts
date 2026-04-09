@@ -306,6 +306,11 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   span.style.width = `${width}px`;
   span.style.overflow = 'hidden';
 
+  // Apply run formatting (underline, color, etc.) to the tab span.
+  // This is needed for decorative underline lines like "Debtor. ____/"
+  // where tabs have underline:single formatting.
+  applyRunStyles(span, run);
+
   applyPmPositions(span, run.pmStart, run.pmEnd);
 
   // Render leader character if specified
