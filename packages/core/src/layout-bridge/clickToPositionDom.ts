@@ -429,6 +429,35 @@ export interface DomCaretPosition {
   pageIndex: number;
 }
 
+/**
+ * Compute a caret height that matches the font size rather than the full line height.
+ * Uses the span's font size (from computed style) to derive ascent+descent.
+ * Falls back to 60% of lineHeight if font size can't be determined.
+ */
+function computeCaretHeight(
+  spanEl: HTMLElement,
+  lineHeight: number
+): { height: number; yOffset: number } {
+  try {
+    const computed = spanEl.ownerDocument?.defaultView?.getComputedStyle(spanEl);
+    if (computed?.fontSize) {
+      const fontSizePx = parseFloat(computed.fontSize);
+      if (fontSizePx > 0) {
+        // Font's natural height is approximately fontSize (ascent ~80% + descent ~20%)
+        const caretHeight = fontSizePx;
+        const yOffset = Math.max(0, (lineHeight - caretHeight) / 2);
+        return { height: caretHeight, yOffset };
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  // Fallback: use 60% of line height
+  const caretHeight = Math.max(12, lineHeight * 0.6);
+  const yOffset = (lineHeight - caretHeight) / 2;
+  return { height: caretHeight, yOffset };
+}
+
 export function getCaretPositionFromDom(
   container: HTMLElement,
   pmPos: number,
@@ -451,12 +480,12 @@ export function getCaretPositionFromDom(
         const pageIndex = pageEl ? Number(pageEl.dataset.pageNumber || 1) - 1 : 0;
         const lineEl = spanEl.closest('.layout-line');
         const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+        const caret = computeCaretHeight(spanEl, lineHeight);
 
-        // Position caret at start of tab (only position within tab)
         return {
           x: spanRect.left - overlayRect.left,
-          y: spanRect.top - overlayRect.top,
-          height: lineHeight,
+          y: spanRect.top - overlayRect.top + caret.yOffset,
+          height: caret.height,
           pageIndex,
         };
       }
@@ -473,11 +502,12 @@ export function getCaretPositionFromDom(
         const pageIndex = pageEl ? Number(pageEl.dataset.pageNumber || 1) - 1 : 0;
         const lineEl = spanEl.closest('.layout-line');
         const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+        const caret = computeCaretHeight(spanEl, lineHeight);
 
         return {
           x: spanRect.left - overlayRect.left,
-          y: spanRect.top - overlayRect.top,
-          height: lineHeight,
+          y: spanRect.top - overlayRect.top + caret.yOffset,
+          height: caret.height,
           pageIndex,
         };
       }
@@ -497,11 +527,12 @@ export function getCaretPositionFromDom(
       const pageIndex = pageEl ? Number(pageEl.dataset.pageNumber || 1) - 1 : 0;
       const lineEl = spanEl.closest('.layout-line');
       const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
+      const caret = computeCaretHeight(spanEl, lineHeight);
 
       return {
         x: rangeRect.left - overlayRect.left,
-        y: rangeRect.top - overlayRect.top,
-        height: lineHeight,
+        y: rangeRect.top - overlayRect.top + caret.yOffset,
+        height: caret.height,
         pageIndex,
       };
     }
@@ -523,11 +554,12 @@ export function getCaretPositionFromDom(
       const pageIndex = pageEl ? Number(pageEl.dataset.pageNumber || 1) - 1 : 0;
       const lineEl = targetEl.closest('.layout-line') || targetEl;
       const lineHeight = (lineEl as HTMLElement).offsetHeight || 16;
+      const caret = computeCaretHeight(targetEl as HTMLElement, lineHeight);
 
       return {
         x: rect.left - overlayRect.left,
-        y: rect.top - overlayRect.top,
-        height: lineHeight,
+        y: rect.top - overlayRect.top + caret.yOffset,
+        height: caret.height,
         pageIndex,
       };
     }
