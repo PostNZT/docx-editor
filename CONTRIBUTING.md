@@ -1,4 +1,4 @@
-# Contributing to @eigenpal/docx-js-editor
+# Contributing to @PostNZT/docx-js-editor
 
 Thanks for your interest in contributing! This guide will help you get started.
 
@@ -11,7 +11,7 @@ Thanks for your interest in contributing! This guide will help you get started.
 
 ```bash
 # Clone the repo
-git clone https://github.com/eigenpal/docx-js-editor.git
+git clone https://github.com/PostNZT/docx-js-editor.git
 cd docx-js-editor
 
 # Install dependencies
@@ -72,7 +72,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture, and 
 
 ## Reporting Bugs
 
-Open an issue at [github.com/eigenpal/docx-js-editor/issues](https://github.com/eigenpal/docx-js-editor/issues) with:
+Open an issue at [github.com/PostNZT/docx-js-editor/issues](https://github.com/PostNZT/docx-js-editor/issues) with:
 
 - Steps to reproduce
 - Expected vs actual behavior

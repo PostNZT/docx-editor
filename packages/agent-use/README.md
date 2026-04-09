@@ -1,4 +1,4 @@
-# @eigenpal/docx-editor-agents
+# @PostNZT/docx-editor-agents
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](./LICENSE)
 
@@ -7,13 +7,13 @@ Word-like API for AI document review. Add comments, suggest replacements, accept
 ## Install
 
 ```bash
-npm install @eigenpal/docx-editor-agents
+npm install @PostNZT/docx-editor-agents
 ```
 
 ## Usage
 
 ```ts
-import { DocxReviewer } from '@eigenpal/docx-editor-agents';
+import { DocxReviewer } from '@PostNZT/docx-editor-agents';
 
 const reviewer = await DocxReviewer.fromBuffer(buffer, 'AI Reviewer');
 
@@ -38,4 +38,4 @@ const output = await reviewer.toBuffer();
 
 ## License
 
-[AGPL-3.0](./LICENSE) — free to use and modify, but you must open-source your code. For commercial licensing without AGPL obligations, contact [founders@eigenpal.com](mailto:founders@eigenpal.com).
+[AGPL-3.0](./LICENSE) — free to use and modify, but you must open-source your code. For commercial licensing without AGPL obligations, contact [founders@PostNZT.com](mailto:founders@PostNZT.com).

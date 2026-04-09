@@ -30,7 +30,7 @@
 
 **File:** `packages/react/src/components/DocxEditor.tsx`
 
-1. Add import for `forceRenderAllPages` and `restoreVirtualization` from `@eigenpal/docx-core/layout-painter/renderPage`
+1. Add import for `forceRenderAllPages` and `restoreVirtualization` from `@PostNZT/docx-core/layout-painter/renderPage`
 2. In `handleDirectPrint()`, insert `forceRenderAllPages(pagesEl as HTMLElement)` before the `cloneNode(true)` call
 3. After the clone and print window setup, add `requestAnimationFrame(() => restoreVirtualization(pagesEl as HTMLElement))` to defer cleanup
 4. Ensure the function handles the case where `forceRenderAllPages` is a no-op (documents with fewer than 8 pages)

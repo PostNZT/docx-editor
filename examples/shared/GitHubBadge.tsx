@@ -71,7 +71,7 @@ export function GitHubBadge() {
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
-    fetch('https://api.github.com/repos/eigenpal/docx-editor')
+    fetch('https://api.github.com/repos/PostNZT/docx-editor')
       .then((res) => res.json())
       .then((data) => {
         if (typeof data.stargazers_count === 'number') {
@@ -81,7 +81,7 @@ export function GitHubBadge() {
       .catch(() => {});
   }, []);
 
-  const repoUrl = 'https://github.com/eigenpal/docx-editor';
+  const repoUrl = 'https://github.com/PostNZT/docx-editor';
 
   return (
     <span
@@ -95,7 +95,7 @@ export function GitHubBadge() {
     >
       <a href={repoUrl} target="_blank" rel="noopener noreferrer" style={repoSectionStyle}>
         {githubIcon}
-        <span>eigenpal/docx-editor</span>
+        <span>PostNZT/docx-editor</span>
       </a>
       {stars !== null && (
         <a href={repoUrl} target="_blank" rel="noopener noreferrer" style={starSectionStyle}>

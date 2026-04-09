@@ -1,4 +1,4 @@
-# Eigenpal DOCX Editor
+# PostNZT DOCX Editor
 
 ## Project Context
 
@@ -204,10 +204,10 @@ For visual testing of UI changes:
 
 ## Issue-Driven Bug Fix Workflow
 
-Issue tracker: **https://github.com/eigenpal/docx-js-editor/issues**
+Issue tracker: **https://github.com/PostNZT/docx-editor/issues**
 
 ```bash
-gh issue view <N> --repo eigenpal/docx-js-editor
+gh issue view <N> --repo PostNZT/docx-editor
 ```
 
 1. **Read** the issue — get description, repro steps, attached files

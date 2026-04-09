@@ -1164,7 +1164,7 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
     'docProps/core.xml',
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:creator>EigenPal DOCX Editor</dc:creator>
+  <dc:creator>PostNZT DOCX Editor</dc:creator>
   <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
   <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
 </cp:coreProperties>`
@@ -1175,7 +1175,7 @@ export async function createEmptyDocx(): Promise<ArrayBuffer> {
     'docProps/app.xml',
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
-  <Application>EigenPal DOCX Editor</Application>
+  <Application>PostNZT DOCX Editor</Application>
   <AppVersion>1.0.0</AppVersion>
 </Properties>`
   );
