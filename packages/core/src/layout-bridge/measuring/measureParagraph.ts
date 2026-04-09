@@ -540,8 +540,13 @@ export function measureParagraph(
       updateMaxFont(style);
 
       // Compute tab width: advance to the next tab stop position.
+      // OOXML tab stop positions are relative to the page margin edge,
+      // so we need to add the paragraph's left indent to currentLine.width
+      // (which is relative to the indented content area) to get the
+      // absolute position from the margin for correct tab stop matching.
       const tabStops = attrs?.tabs;
-      const currentPos = currentLine.width + (currentLine.leftOffset ?? 0);
+      const indentLeftPx = indent?.left ?? 0;
+      const currentPos = currentLine.width + indentLeftPx + (currentLine.leftOffset ?? 0);
       const tabWidth = computeTabWidth(currentPos, tabStops);
 
       if (currentLine.width + tabWidth > currentLine.availableWidth + WIDTH_TOLERANCE) {
