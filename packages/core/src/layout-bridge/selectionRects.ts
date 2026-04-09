@@ -590,10 +590,17 @@ export function getCaretPosition(
               lineHeightBefore(paragraphMeasure, lineIndex) -
               lineHeightBefore(paragraphMeasure, paragraphFragment.fromLine);
 
+            // Caret height should match the font's natural height (ascent + descent),
+            // not the line height (which includes spacing for double/triple spacing).
+            // This makes the caret visually match the text characters.
+            const caretHeight = line.ascent + line.descent;
+            // Center the caret vertically within the line
+            const caretYOffset = (line.lineHeight - caretHeight) / 2;
+
             return {
               x: fragment.x + indentLeft + alignmentOffset + x,
-              y: fragment.y + lineOffset + pageTopY,
-              height: line.lineHeight,
+              y: fragment.y + lineOffset + pageTopY + caretYOffset,
+              height: caretHeight,
               pageIndex,
             };
           }
