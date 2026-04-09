@@ -1138,8 +1138,9 @@ function convertRunContent(content: RunContent, marks: ReturnType<typeof schema.
       return [];
 
     case 'tab':
-      // Convert to tab node for proper rendering
-      return [schema.node('tab')];
+      // Convert to tab node with marks so formatting (underline, bold, etc.) is preserved.
+      // Without marks, tabs in underlined runs lose their underline in the layout-painter.
+      return [schema.node('tab', null, undefined, marks)];
 
     case 'drawing':
       if (content.image) {
