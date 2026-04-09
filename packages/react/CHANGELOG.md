@@ -1,4 +1,4 @@
-# @eigenpal/docx-js-editor
+# @PostNZT/docx-js-editor
 
 ## 0.0.33
 
@@ -16,7 +16,7 @@
 
 ### Patch Changes
 
-- [`d77716f`](https://github.com/eigenpal/docx-editor/commit/d77716f3abc8580ca48d9e2280f6564ce17df443) Thanks [@jedrazb](https://github.com/jedrazb)! - Bump
+- [`d77716f`](https://github.com/PostNZT/docx-editor/commit/d77716f3abc8580ca48d9e2280f6564ce17df443) Thanks [@jedrazb](https://github.com/jedrazb)! - Bump
 
 ## 0.0.30
 

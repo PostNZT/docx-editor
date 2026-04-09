@@ -16,12 +16,6 @@
 
 Open-source WYSIWYG DOCX editor for the browser. No server required. **[Live demo](https://docx-editor.dev/editor)** | **[Documentation](https://www.docx-editor.dev/docs)**
 
-<p align="center">
-  <a href="https://docx-editor.dev/editor">
-    <img src="./assets/editor.png" alt="DOCX JS Editor screenshot" width="700" />
-  </a>
-</p>
-
 - WYSIWYG editing with Word fidelity — formatting, tables, images, hyperlinks
 - Track changes (suggestion mode) with accept/reject
 - Comments with replies, resolve/reopen, scroll-to-highlight

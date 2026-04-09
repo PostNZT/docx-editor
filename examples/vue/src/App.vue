@@ -3,7 +3,7 @@
     <header class="header">
       <h1>DOCX Editor — Vue Example</h1>
       <p class="subtitle">
-        This is a scaffold for the Vue.js integration of <code>@eigenpal/docx-core</code>.
+        This is a scaffold for the Vue.js integration of <code>@PostNZT/docx-core</code>.
         The editor component is not yet implemented.
       </p>
     </header>
@@ -12,7 +12,7 @@
         <p>Vue editor component coming soon.</p>
         <p>
           See
-          <a href="https://github.com/eigenpal/docx-editor" target="_blank" rel="noopener">
+          <a href="https://github.com/PostNZT/docx-editor" target="_blank" rel="noopener">
             the repository
           </a>
           for contribution guidelines.
@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-// Future: import { DocxEditor } from '@eigenpal/docx-editor-vue';
+// Future: import { DocxEditor } from '@PostNZT/docx-editor-vue';
 </script>
 
 <style scoped>

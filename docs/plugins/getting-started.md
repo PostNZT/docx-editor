@@ -21,7 +21,7 @@ Most plugins are **EditorPlugins**. Use a **CorePlugin** when you need headless 
 Plugins are passed as an array to `PluginHost`, which wraps your `DocxEditor`:
 
 ```tsx
-import { DocxEditor, PluginHost } from '@eigenpal/docx-js-editor';
+import { DocxEditor, PluginHost } from '@PostNZT/docx-js-editor';
 import { myPlugin } from './myPlugin';
 
 <PluginHost plugins={[myPlugin]}>
@@ -38,7 +38,7 @@ import { myPlugin } from './myPlugin';
 CorePlugins are registered imperatively on the global registry:
 
 ```ts
-import { pluginRegistry, docxtemplaterPlugin } from '@eigenpal/docx-js-editor';
+import { pluginRegistry, docxtemplaterPlugin } from '@PostNZT/docx-js-editor';
 
 pluginRegistry.register(docxtemplaterPlugin);
 ```
@@ -80,7 +80,7 @@ function WordCountPanel({ pluginState }: PluginPanelProps<WordCountState>) {
 ### 3. Wire it into an EditorPlugin
 
 ```ts
-import type { EditorPlugin } from '@eigenpal/docx-js-editor';
+import type { EditorPlugin } from '@PostNZT/docx-js-editor';
 
 export const wordCountPlugin: EditorPlugin<WordCountState> = {
   id: 'word-count',

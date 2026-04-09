@@ -8,7 +8,7 @@ const monorepoRoot = path.resolve(__dirname, '../..');
 
 async function fetchGitHubStars(): Promise<number | null> {
   try {
-    const res = await fetch('https://api.github.com/repos/eigenpal/docx-editor');
+    const res = await fetch('https://api.github.com/repos/PostNZT/docx-editor');
     const data = await res.json();
     if (typeof data.stargazers_count === 'number') return data.stargazers_count;
   } catch {}
