@@ -417,28 +417,61 @@ function twipsToPixels(twips: number): number {
 }
 
 /**
- * Compute caret height from a DOM element's computed font size.
- * Returns a height matching the font's natural size (not the line height
- * which includes spacing for double/triple spacing).
+ * Compute caret height that matches the font's character height.
+ *
+ * Uses the browser's Range API to measure the actual rendered height of a
+ * character at the caret position. This is the most reliable method because
+ * it uses the browser's own text rendering engine rather than trying to
+ * compute from CSS properties.
+ *
+ * Fallback chain:
+ * 1. Range rect height from a character near the caret
+ * 2. Computed fontSize from CSS
+ * 3. 60% of line height
  */
 function computeCaretHeightFromElement(
   el: HTMLElement,
-  lineHeight: number
+  lineHeight: number,
+  textNode?: Text,
+  charIndex?: number
 ): { height: number; yOffset: number } {
+  // Method 1: Use Range API to measure actual character height
+  if (textNode && charIndex !== undefined && charIndex < textNode.length) {
+    try {
+      const doc = el.ownerDocument;
+      if (doc) {
+        const range = doc.createRange();
+        // Measure the character AT the caret position (or the one before it)
+        const measureAt = Math.min(charIndex, textNode.length - 1);
+        range.setStart(textNode, measureAt);
+        range.setEnd(textNode, measureAt + 1);
+        const rect = range.getBoundingClientRect();
+        if (rect.height > 0 && rect.height < lineHeight) {
+          const yOffset = Math.max(0, (lineHeight - rect.height) / 2);
+          return { height: rect.height, yOffset };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Method 2: Use computed font size
   try {
     const computed = el.ownerDocument?.defaultView?.getComputedStyle(el);
     if (computed?.fontSize) {
       const fontSizePx = parseFloat(computed.fontSize);
-      if (fontSizePx > 0) {
-        const caretHeight = fontSizePx;
-        const yOffset = Math.max(0, (lineHeight - caretHeight) / 2);
-        return { height: caretHeight, yOffset };
+      if (fontSizePx > 0 && fontSizePx < lineHeight) {
+        const yOffset = Math.max(0, (lineHeight - fontSizePx) / 2);
+        return { height: fontSizePx, yOffset };
       }
     }
   } catch {
     /* ignore */
   }
-  const caretHeight = Math.max(12, lineHeight * 0.6);
+
+  // Method 3: Fallback
+  const caretHeight = Math.max(12, lineHeight * 0.55);
   const yOffset = (lineHeight - caretHeight) / 2;
   return { height: caretHeight, yOffset };
 }
@@ -2172,10 +2205,10 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
             const pageEl = spanEl.closest('.layout-page');
             const pageIndex = pageEl ? Number((pageEl as HTMLElement).dataset.pageNumber) - 1 : 0;
 
-            // Caret height = font size (not line height which includes spacing)
+            // Caret height from actual character measurement
             const lineEl = spanEl.closest('.layout-line');
             const lineHeight = lineEl ? (lineEl as HTMLElement).offsetHeight : 16;
-            const caretH = computeCaretHeightFromElement(spanEl, lineHeight);
+            const caretH = computeCaretHeightFromElement(spanEl, lineHeight, textNode, charIndex);
 
             return {
               x: (rangeRect.left - overlayRect.left) / currentZoom,

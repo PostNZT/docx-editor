@@ -493,7 +493,7 @@ function extractParagraphContent(
         currentRun = null;
         currentMarksKey = null;
       }
-      content.push(createTabRun());
+      content.push(createTabRun(node.marks));
     } else if (node.type.name === 'field') {
       // Field ends current run and emits a field content item
       if (currentRun) {
@@ -666,17 +666,23 @@ function createBreakRun(): Run {
 }
 
 /**
- * Create a Run containing a tab
+ * Create a Run containing a tab, preserving formatting from marks (underline, bold, etc.)
  */
-function createTabRun(): Run {
+function createTabRun(marks?: readonly Mark[]): Run {
   const tabContent: TabContent = {
     type: 'tab',
   };
 
-  return {
+  const run: Run = {
     type: 'run',
     content: [tabContent],
   };
+
+  if (marks && marks.length > 0) {
+    run.formatting = marksToTextFormatting(marks);
+  }
+
+  return run;
 }
 
 /**

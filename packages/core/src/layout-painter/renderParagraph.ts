@@ -306,10 +306,24 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   span.style.width = `${width}px`;
   span.style.overflow = 'hidden';
 
-  // Apply run formatting (underline, color, etc.) to the tab span.
-  // This is needed for decorative underline lines like "Debtor. ____/"
-  // where tabs have underline:single formatting.
+  // Apply run formatting (color, font, etc.) but NOT text-decoration
+  // because text-decoration on inline-block with only whitespace doesn't
+  // render reliably across browsers.
   applyRunStyles(span, run);
+
+  // For underlined tabs, use border-bottom instead of text-decoration.
+  // This creates the visible line for decorative patterns like "Debtor.____/"
+  // where tabs have underline:single formatting in the DOCX.
+  if (run.underline) {
+    // Remove text-decoration set by applyRunStyles (unreliable on inline-block)
+    span.style.textDecorationLine = 'none';
+    // Use border-bottom for reliable rendering
+    const underlineColor =
+      typeof run.underline === 'object' && run.underline.color
+        ? run.underline.color
+        : run.color || '#000';
+    span.style.borderBottom = `1px solid ${underlineColor}`;
+  }
 
   applyPmPositions(span, run.pmStart, run.pmEnd);
 
@@ -317,7 +331,6 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   if (leader && leader !== 'none') {
     const leaderChar = getLeaderChar(leader);
     if (leaderChar) {
-      // Fill with leader characters
       span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
         `<svg xmlns='http://www.w3.org/2000/svg' width='4' height='16'><text x='0' y='12' font-size='12' fill='%23000'>${leaderChar}</text></svg>`
       )}")`;
@@ -327,7 +340,7 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   }
 
   // Tab character for accessibility (but invisible)
-  span.textContent = '\u00A0'; // Non-breaking space for layout
+  span.textContent = '\u00A0';
 
   return span;
 }
