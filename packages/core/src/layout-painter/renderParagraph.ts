@@ -283,7 +283,9 @@ function renderTextRun(run: TextRun, doc: Document, resolvedCommentIds?: Set<num
     // Style hyperlink — default Word hyperlink color is blue (#0563c1)
     const hyperlinkColor = run.color || '#0563c1';
     anchor.style.color = hyperlinkColor;
-    anchor.style.textDecoration = 'underline';
+    // Only underline if the DOCX source had explicit underline formatting.
+    // Don't force underline on all hyperlinks — respect the document's styling.
+    anchor.style.textDecoration = run.underline ? 'underline' : 'none';
     // Override span color to match anchor (prevents color mismatch in selection)
     span.style.color = hyperlinkColor;
     span.appendChild(anchor);
@@ -306,27 +308,30 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   span.style.width = `${width}px`;
   span.style.overflow = 'hidden';
 
-  // Apply run formatting (color, font, etc.) but NOT text-decoration
-  // because text-decoration on inline-block with only whitespace doesn't
-  // render reliably across browsers.
+  // Apply run formatting (color, font, etc.) including text-decoration.
   applyRunStyles(span, run);
 
-  // For underlined tabs, use border-bottom instead of text-decoration.
-  // This creates the visible line for decorative patterns like "Debtor.____/"
-  // where tabs have underline:single formatting in the DOCX.
-  //
-  // To align the border-bottom with the text underline position, we shrink
-  // the tab's line-height to match the font so the bottom of the tab box
-  // sits at the descent line (close to the text underline) rather than at
-  // the full line-height bottom.
+  // For underlined tabs, use border-bottom positioned to match text underline.
+  // text-decoration on inline-block with whitespace-only content doesn't render
+  // the full width reliably. border-bottom does, so we use it but carefully
+  // align it with the text underline position by:
+  // 1. Removing text-decoration (unreliable on inline-block whitespace)
+  // 2. Using vertical-align: baseline so the tab aligns with text
+  // 3. Setting height to match font metrics (not line-height) so border-bottom
+  //    sits at the descent line where text underlines render
   if (run.underline) {
-    // Remove text-decoration set by applyRunStyles (unreliable on inline-block)
     span.style.textDecorationLine = 'none';
-    // Shrink line-height to font-size so border-bottom aligns near the text
-    // underline position instead of the full line-height bottom.
-    span.style.lineHeight = '1';
     span.style.verticalAlign = 'baseline';
-    // Use border-bottom for reliable rendering
+    // Use border-bottom for reliable underline on inline-block whitespace.
+    // Position it to align with the browser's text-decoration underline by
+    // sizing the box to the font's ascent (about 80% of font-size). This
+    // places border-bottom at the baseline, where text underline also renders.
+    const fontSizePx = run.fontSize ? (run.fontSize * 96) / 72 : 16;
+    // Ascent ratio ~0.8 for most fonts places the bottom at the baseline
+    const ascentHeight = Math.round(fontSizePx * 0.82);
+    span.style.height = `${ascentHeight}px`;
+    span.style.lineHeight = `${ascentHeight}px`;
+    span.style.overflow = 'visible';
     const underlineColor =
       typeof run.underline === 'object' && run.underline.color
         ? run.underline.color
