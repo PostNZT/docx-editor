@@ -1,6 +1,6 @@
 {
   "name": "@postnzt/docx-core",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "private": true,
   "sideEffects": false,
   "description": "Framework-agnostic core for DOCX parsing, editing, and rendering",

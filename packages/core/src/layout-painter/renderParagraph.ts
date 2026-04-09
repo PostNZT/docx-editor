@@ -304,45 +304,28 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
   const span = doc.createElement('span');
   span.className = `${PARAGRAPH_CLASS_NAMES.run} ${PARAGRAPH_CLASS_NAMES.tab}`;
 
-  span.style.display = 'inline-block';
-  span.style.width = `${width}px`;
-  span.style.overflow = 'hidden';
-
   // Apply run formatting (color, font, etc.) including text-decoration.
   applyRunStyles(span, run);
-
-  // For underlined tabs, use border-bottom positioned to match text underline.
-  // text-decoration on inline-block with whitespace-only content doesn't render
-  // the full width reliably. border-bottom does, so we use it but carefully
-  // align it with the text underline position by:
-  // 1. Removing text-decoration (unreliable on inline-block whitespace)
-  // 2. Using vertical-align: baseline so the tab aligns with text
-  // 3. Setting height to match font metrics (not line-height) so border-bottom
-  //    sits at the descent line where text underlines render
-  if (run.underline) {
-    span.style.textDecorationLine = 'none';
-    span.style.verticalAlign = 'baseline';
-    // Use border-bottom for reliable underline on inline-block whitespace.
-    // Position it to align with the browser's text-decoration underline by
-    // sizing the box to the font's ascent (about 80% of font-size). This
-    // places border-bottom at the baseline, where text underline also renders.
-    const fontSizePx = run.fontSize ? (run.fontSize * 96) / 72 : 16;
-    // Ascent ratio ~0.8 for most fonts places the bottom at the baseline
-    const ascentHeight = Math.round(fontSizePx * 0.82);
-    span.style.height = `${ascentHeight}px`;
-    span.style.lineHeight = `${ascentHeight}px`;
-    span.style.overflow = 'visible';
-    const underlineColor =
-      typeof run.underline === 'object' && run.underline.color
-        ? run.underline.color
-        : run.color || '#000';
-    span.style.borderBottom = `1px solid ${underlineColor}`;
-  }
-
   applyPmPositions(span, run.pmStart, run.pmEnd);
 
+  if (run.underline) {
+    // For underlined tabs, use display:inline so text-decoration renders
+    // identically to adjacent text runs (same position, same weight).
+    // Width is achieved via letter-spacing on a single character.
+    span.style.display = 'inline';
+    span.style.letterSpacing = `${width - 4}px`;
+    // Single non-breaking space carries the underline across the full width
+    span.textContent = '\u00A0';
+  } else {
+    // Non-underlined tabs: use inline-block with explicit width
+    span.style.display = 'inline-block';
+    span.style.width = `${width}px`;
+    span.style.overflow = 'hidden';
+    span.textContent = '\u00A0';
+  }
+
   // Render leader character if specified
-  if (leader && leader !== 'none') {
+  if (!run.underline && leader && leader !== 'none') {
     const leaderChar = getLeaderChar(leader);
     if (leaderChar) {
       span.style.backgroundImage = `url("data:image/svg+xml,${encodeURIComponent(
@@ -352,9 +335,6 @@ function renderTabRun(run: TabRun, doc: Document, width: number, leader?: string
       span.style.backgroundPosition = 'bottom';
     }
   }
-
-  // Tab character for accessibility (but invisible)
-  span.textContent = '\u00A0';
 
   return span;
 }
