@@ -41,6 +41,7 @@ import { parseFootnotes, parseEndnotes } from './footnoteParser';
 import { parseComments } from './commentParser';
 import { loadFontsWithMapping } from '../utils/fontLoader';
 import { type DocxInput, toArrayBuffer } from '../utils/docxInput';
+import { tiffBufferToPngDataUrl } from '../utils/tiffToPng';
 
 // ============================================================================
 // PROGRESS CALLBACK
@@ -333,7 +334,14 @@ function buildMediaMap(raw: RawDocxContent, _rels: RelationshipMap): Map<string,
       binary += String.fromCharCode(bytes[i]);
     }
     const base64 = btoa(binary);
-    const dataUrl = `data:${mimeType};base64,${base64}`;
+    let dataUrl = `data:${mimeType};base64,${base64}`;
+
+    // Browsers cannot render image/tiff natively. Decode to a PNG data URL
+    // for display while keeping the original bytes for roundtrip save (#146).
+    if (mimeType === 'image/tiff') {
+      const png = tiffBufferToPngDataUrl(data);
+      if (png) dataUrl = png;
+    }
 
     const mediaFile: MediaFile = {
       path,

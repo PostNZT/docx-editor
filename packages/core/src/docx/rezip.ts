@@ -31,7 +31,7 @@
 
 import JSZip from 'jszip';
 import type { Document } from '../types/document';
-import type { BlockContent, Image, Hyperlink } from '../types/content';
+import type { BlockContent, Image, Hyperlink, HeaderFooter } from '../types/content';
 import { serializeDocument } from './serializer/documentSerializer';
 import { serializeHeaderFooter } from './serializer/headerFooterSerializer';
 import {
@@ -331,6 +331,225 @@ async function processNewHyperlinks(
 }
 
 // ============================================================================
+// NEW HEADER/FOOTER HANDLING
+// ============================================================================
+
+/**
+ * Register headers/footers that exist in the document model but aren't yet
+ * mapped in `document.xml.rels`. Newly-added headers/footers (e.g. via the UI
+ * when the original document had none — issue #274) arrive with placeholder
+ * rIds. For Word to read them back we need to:
+ *
+ *   1. Allocate a real rId and a free `headerN.xml` / `footerN.xml` filename.
+ *   2. Write the serialized XML into the ZIP at that path.
+ *   3. Add the `<Relationship>` entry to `word/_rels/document.xml.rels`.
+ *   4. Add the `<Override>` entry in `[Content_Types].xml`.
+ *   5. Update the in-memory maps + section property references so the
+ *      subsequent `serializeDocument` call emits the new rId.
+ */
+async function processNewHeadersFooters(
+  doc: Document,
+  zip: JSZip,
+  compressionLevel: number
+): Promise<void> {
+  const pkg = doc.package;
+  const headers = pkg.headers;
+  const footers = pkg.footers;
+  if ((!headers || headers.size === 0) && (!footers || footers.size === 0)) return;
+
+  const rels = pkg.relationships ?? new Map();
+  pkg.relationships = rels;
+
+  const relsPath = 'word/_rels/document.xml.rels';
+  const relsFile = zip.file(relsPath);
+  let relsXml =
+    (await relsFile?.async('text')) ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+
+  let maxId = findMaxRId(relsXml);
+  const relEntries: string[] = [];
+  const newOverrides: Array<{ part: string; contentType: string }> = [];
+  const compressionOptions = { level: compressionLevel };
+
+  const registerKind = (map: Map<string, HeaderFooter> | undefined, kind: 'header' | 'footer') => {
+    if (!map || map.size === 0) return;
+    const relType = kind === 'header' ? RELATIONSHIP_TYPES.header : RELATIONSHIP_TYPES.footer;
+
+    // Track filenames already used by existing headers/footers to avoid
+    // collision when allocating a new `headerN.xml`.
+    const usedNumbers = new Set<number>();
+    const fileRegex = new RegExp(`${kind}(\\d+)\\.xml$`);
+    for (const rel of rels.values()) {
+      if (rel.type === relType && rel.target) {
+        const m = rel.target.match(fileRegex);
+        if (m) usedNumbers.add(parseInt(m[1], 10));
+      }
+    }
+
+    // Iterate a snapshot so we can reassign keys without breaking iteration.
+    for (const [oldRId, hf] of Array.from(map.entries())) {
+      if (rels.has(oldRId)) continue; // already registered
+
+      maxId++;
+      const newRId = `rId${maxId}`;
+      let num = 1;
+      while (usedNumbers.has(num)) num++;
+      usedNumbers.add(num);
+      const filename = `${kind}${num}.xml`;
+      const target = filename; // relative to `word/`
+      const fullPath = `word/${filename}`;
+
+      rels.set(newRId, { id: newRId, type: relType, target });
+      relEntries.push(`<Relationship Id="${newRId}" Type="${relType}" Target="${target}"/>`);
+
+      const contentType =
+        kind === 'header'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml'
+          : 'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml';
+      newOverrides.push({ part: `/${fullPath}`, contentType });
+
+      // Write the part now — `serializeHeadersFootersToZip` later will also
+      // write it (same content), which is fine and keeps that function the
+      // single source of header/footer XML.
+      zip.file(fullPath, serializeHeaderFooter(hf), {
+        compression: 'DEFLATE',
+        compressionOptions,
+      });
+
+      // Re-key the in-memory map so the rId matches the rels entry.
+      map.delete(oldRId);
+      map.set(newRId, hf);
+
+      // Update every section property reference pointing at the old placeholder.
+      const sp = pkg.document?.finalSectionProperties;
+      if (sp) {
+        if (kind === 'header' && sp.headerReferences) {
+          sp.headerReferences = sp.headerReferences.map((r) =>
+            r.rId === oldRId ? { ...r, rId: newRId } : r
+          );
+        }
+        if (kind === 'footer' && sp.footerReferences) {
+          sp.footerReferences = sp.footerReferences.map((r) =>
+            r.rId === oldRId ? { ...r, rId: newRId } : r
+          );
+        }
+      }
+    }
+  };
+
+  registerKind(headers, 'header');
+  registerKind(footers, 'footer');
+
+  if (relEntries.length > 0) {
+    relsXml = relsXml.replace('</Relationships>', relEntries.join('') + '</Relationships>');
+    zip.file(relsPath, relsXml, { compression: 'DEFLATE', compressionOptions });
+  }
+
+  if (newOverrides.length > 0) {
+    const ctFile = zip.file('[Content_Types].xml');
+    if (ctFile) {
+      let ctXml = await ctFile.async('text');
+      for (const { part, contentType } of newOverrides) {
+        if (!ctXml.includes(`PartName="${part}"`)) {
+          ctXml = ctXml.replace(
+            '</Types>',
+            `<Override PartName="${part}" ContentType="${contentType}"/></Types>`
+          );
+        }
+      }
+      zip.file('[Content_Types].xml', ctXml, { compression: 'DEFLATE', compressionOptions });
+    }
+  }
+
+  // Images embedded in headers/footers must live in the header/footer's OWN
+  // rels file (e.g. `word/_rels/header1.xml.rels`). Walk every header/footer
+  // — new and existing — and register any data-URL images there. Mutates the
+  // image rIds so the header XML serializer emits the correct `r:embed`.
+  const allHfs: Array<[string, HeaderFooter]> = [];
+  if (headers) for (const entry of headers.entries()) allHfs.push(entry);
+  if (footers) for (const entry of footers.entries()) allHfs.push(entry);
+  for (const [rId, hf] of allHfs) {
+    const rel = rels.get(rId);
+    if (!rel?.target) continue;
+    const hfFileName = rel.target.startsWith('/') ? rel.target.slice(1) : `word/${rel.target}`;
+    const baseName = hfFileName.split('/').pop() ?? '';
+    const hfRelsPath = `word/_rels/${baseName}.rels`;
+    await processImagesInHeaderFooterRels(hf, hfRelsPath, zip, compressionLevel);
+  }
+}
+
+/**
+ * Register data-URL images embedded in a single header/footer inside that
+ * part's own rels file, create the rels file if it doesn't exist, and copy
+ * the binary into `word/media/`. Mutates `image.rId` so the header serializer
+ * emits the correct `r:embed`.
+ */
+async function processImagesInHeaderFooterRels(
+  hf: HeaderFooter,
+  hfRelsPath: string,
+  zip: JSZip,
+  compressionLevel: number
+): Promise<void> {
+  const newImages = collectNewImages(hf.content);
+  if (newImages.length === 0) return;
+
+  const compressionOptions = { level: compressionLevel };
+  const relsFile = zip.file(hfRelsPath);
+  let relsXml =
+    (await relsFile?.async('text')) ??
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
+
+  let maxId = findMaxRId(relsXml);
+  let maxImageNum = 0;
+  zip.forEach((relativePath) => {
+    const m = relativePath.match(/^word\/media\/image(\d+)\./);
+    if (m) maxImageNum = Math.max(maxImageNum, parseInt(m[1], 10));
+  });
+
+  const relEntries: string[] = [];
+  const extensionsAdded = new Set<string>();
+
+  for (const image of newImages) {
+    if (!image.src) continue;
+    const { data, extension } = decodeDataUrl(image.src);
+    maxImageNum++;
+    maxId++;
+    const mediaFilename = `image${maxImageNum}.${extension}`;
+    const mediaPath = `word/media/${mediaFilename}`;
+    const newRId = `rId${maxId}`;
+
+    zip.file(mediaPath, data, { compression: 'DEFLATE', compressionOptions });
+    relEntries.push(
+      `<Relationship Id="${newRId}" Type="${RELATIONSHIP_TYPES.image}" Target="media/${mediaFilename}"/>`
+    );
+    extensionsAdded.add(extension);
+    image.rId = newRId;
+  }
+
+  relsXml = relsXml.replace('</Relationships>', relEntries.join('') + '</Relationships>');
+  zip.file(hfRelsPath, relsXml, { compression: 'DEFLATE', compressionOptions });
+
+  if (extensionsAdded.size > 0) {
+    const ctFile = zip.file('[Content_Types].xml');
+    if (ctFile) {
+      let ctXml = await ctFile.async('text');
+      for (const ext of extensionsAdded) {
+        if (!ctXml.includes(`Extension="${ext}"`)) {
+          const contentType = getContentTypeForExtension(ext, '');
+          ctXml = ctXml.replace(
+            '</Types>',
+            `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`
+          );
+        }
+      }
+      zip.file('[Content_Types].xml', ctXml, { compression: 'DEFLATE', compressionOptions });
+    }
+  }
+}
+
+// ============================================================================
 // MAIN REPACKER
 // ============================================================================
 
@@ -399,6 +618,12 @@ export async function repackDocx(doc: Document, options: RepackOptions = {}): Pr
   // This mutates hyperlink rIds in-place so the serializer outputs correct references.
   const newHyperlinks = collectHyperlinksWithoutRId(exportDocument.package.document.content);
   await processNewHyperlinks(newHyperlinks, newZip, compressionLevel);
+
+  // Register header/footer parts that exist in-memory but aren't yet in the
+  // rels map (newly added headers/footers on an empty or header-less doc —
+  // issue #274). Must run before serializeDocument so section props emit the
+  // rewritten rIds.
+  await processNewHeadersFooters(exportDocument, newZip, compressionLevel);
 
   // Serialize and update document.xml (after image/hyperlink rIds have been rewritten)
   const documentXml = serializeDocument(exportDocument);
@@ -485,6 +710,8 @@ export async function repackDocxFromRaw(
 
   const newHyperlinks = collectHyperlinksWithoutRId(exportDocument.package.document.content);
   await processNewHyperlinks(newHyperlinks, newZip, compressionLevel);
+
+  await processNewHeadersFooters(exportDocument, newZip, compressionLevel);
 
   const documentXml = serializeDocument(exportDocument);
   newZip.file('word/document.xml', documentXml, {

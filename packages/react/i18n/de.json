@@ -70,7 +70,9 @@
     "subscriptShortcut": "Tiefgestellt (Strg+=)",
     "imageProperties": "Bildeigenschaften",
     "imagePropertiesShortcut": "Bildeigenschaften (Alternativtext, Rahmen)...",
-    "clearFormatting": "Formatierung löschen"
+    "clearFormatting": "Formatierung löschen",
+    "openFontColorPicker": null,
+    "openHighlightColorPicker": null
   },
   "alignment": {
     "alignLeft": "Linksbündig",

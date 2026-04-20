@@ -62,15 +62,38 @@ const S_CONTAINER: CSSProperties = {
   display: 'inline-block',
 };
 
-const S_BUTTON: CSSProperties = {
+const S_SPLIT_WRAPPER: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'stretch',
+  height: '32px',
+  borderRadius: '4px',
+  overflow: 'hidden',
+};
+
+const S_APPLY_SIDE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '40px',
+  width: '28px',
   height: '32px',
-  padding: '2px 6px',
+  padding: '2px 4px',
   border: 'none',
-  borderRadius: '4px',
+  borderRadius: '4px 0 0 4px',
+  backgroundColor: 'transparent',
+  cursor: 'pointer',
+  transition: 'background-color 0.1s',
+  color: 'var(--doc-text-muted)',
+};
+
+const S_ARROW_SIDE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '14px',
+  height: '32px',
+  padding: 0,
+  border: 'none',
+  borderRadius: '0 4px 4px 0',
   backgroundColor: 'transparent',
   cursor: 'pointer',
   transition: 'background-color 0.1s',
@@ -327,8 +350,14 @@ export function AdvancedColorPicker({
   autoLabel,
 }: AdvancedColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [applyHovered, setApplyHovered] = useState(false);
+  const [arrowHovered, setArrowHovered] = useState(false);
   const [customHex, setCustomHex] = useState('');
+  // Last color the user actively picked from this dropdown. Clicking the main
+  // button (not the arrow) re-applies it without opening the dropdown — the
+  // same UX as Word's Font Color / Highlight buttons. Falls back to opening
+  // the dropdown when nothing has been picked yet.
+  const [lastApplied, setLastApplied] = useState<ColorValue | string | undefined>(undefined);
   const { t } = useTranslation();
 
   // Sync custom hex input with the current value
@@ -359,11 +388,18 @@ export function AdvancedColorPicker({
 
   // --- Handlers ---
 
+  const applyColor = useCallback(
+    (picked: ColorValue | string) => {
+      onChange?.(picked);
+      setLastApplied(picked);
+    },
+    [onChange]
+  );
+
   const handleThemeCellSelect = useCallback(
     (cell: ThemeMatrixCell) => {
       if (mode === 'highlight') {
-        // Highlight mode: emit hex string (the highlight mark supports any color)
-        onChange?.(cell.hex);
+        applyColor(cell.hex);
       } else {
         const colorValue: ColorValue = {
           themeColor: cell.themeSlot,
@@ -371,57 +407,64 @@ export function AdvancedColorPicker({
         };
         if (cell.tint) colorValue.themeTint = cell.tint;
         if (cell.shade) colorValue.themeShade = cell.shade;
-        onChange?.(colorValue);
+        applyColor(colorValue);
       }
       setIsOpen(false);
     },
-    [mode, onChange]
+    [mode, applyColor]
   );
 
   const handleStandardColorSelect = useCallback(
     (hex: string) => {
-      if (mode === 'highlight') {
-        onChange?.(hex);
-      } else {
-        onChange?.({ rgb: hex });
-      }
+      applyColor(mode === 'highlight' ? hex : { rgb: hex });
       setIsOpen(false);
     },
-    [mode, onChange]
+    [mode, applyColor]
   );
 
   const handleAutomatic = useCallback(() => {
-    if (mode === 'highlight') {
-      onChange?.('none');
-    } else {
-      onChange?.({ auto: true });
-    }
+    applyColor(mode === 'highlight' ? 'none' : { auto: true });
     setIsOpen(false);
-  }, [mode, onChange]);
+  }, [mode, applyColor]);
 
   const handleCustomApply = useCallback(() => {
     const hex = customHex.replace(/^#/, '').toUpperCase();
     if (/^[0-9A-F]{6}$/i.test(hex)) {
-      if (mode === 'highlight') {
-        onChange?.(hex);
-      } else {
-        onChange?.({ rgb: hex });
-      }
+      applyColor(mode === 'highlight' ? hex : { rgb: hex });
       setIsOpen(false);
       setCustomHex('');
     }
-  }, [mode, customHex, onChange]);
+  }, [mode, customHex, applyColor]);
 
-  // --- Button style ---
-  const buttonStyle: CSSProperties = {
-    ...S_BUTTON,
-    ...(disabled
-      ? { cursor: 'default', opacity: 0.38 }
-      : isOpen
-        ? { backgroundColor: 'var(--doc-primary-light)', color: 'var(--doc-primary)' }
-        : isHovered
-          ? { backgroundColor: 'var(--doc-bg-hover)' }
-          : {}),
+  // Click on the icon half of the split button: re-apply the last picked
+  // color without opening the dropdown. If nothing has been picked yet, fall
+  // through and open the dropdown so the user has something to pick.
+  const handleApplyClick = useCallback(() => {
+    if (disabled) return;
+    if (lastApplied !== undefined) {
+      onChange?.(lastApplied);
+      return;
+    }
+    setIsOpen(true);
+  }, [disabled, lastApplied, onChange]);
+
+  // --- Split-button styles ---
+  const disabledStyle: CSSProperties = disabled ? { cursor: 'default', opacity: 0.38 } : {};
+
+  const applyStyle: CSSProperties = {
+    ...S_APPLY_SIDE,
+    ...disabledStyle,
+    ...(!disabled && applyHovered ? { backgroundColor: 'var(--doc-bg-hover)' } : {}),
+  };
+
+  const arrowStyle: CSSProperties = {
+    ...S_ARROW_SIDE,
+    ...disabledStyle,
+    ...(!disabled && isOpen
+      ? { backgroundColor: 'var(--doc-primary-light)', color: 'var(--doc-primary)' }
+      : !disabled && arrowHovered
+        ? { backgroundColor: 'var(--doc-bg-hover)' }
+        : {}),
   };
 
   const defaultTitle =
@@ -429,6 +472,13 @@ export function AdvancedColorPicker({
       ? t('formattingBar.fontColor')
       : mode === 'highlight'
         ? t('formattingBar.highlightColor')
+        : t('table.borderColor');
+
+  const arrowTitle =
+    mode === 'text'
+      ? t('formattingBar.openFontColorPicker')
+      : mode === 'highlight'
+        ? t('formattingBar.openHighlightColorPicker')
         : t('table.borderColor');
 
   const iconName =
@@ -445,35 +495,55 @@ export function AdvancedColorPicker({
       className={`docx-advanced-color-picker ${className || ''}`}
       style={{ ...S_CONTAINER, ...style }}
     >
-      <button
-        type="button"
-        className="docx-advanced-color-picker-button"
-        style={buttonStyle}
-        onClick={toggleDropdown}
-        onMouseDown={(e) => e.preventDefault()}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        disabled={disabled}
-        title={title || defaultTitle}
+      <div
+        className="docx-advanced-color-picker-split"
+        style={S_SPLIT_WRAPPER}
+        role="group"
         aria-label={title || defaultTitle}
-        aria-haspopup="true"
-        aria-expanded={isOpen}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-          <MaterialSymbol name={iconName} size={18} />
-          <div
-            style={{
-              ...S_COLOR_BAR,
-              backgroundColor: resolvedColor === 'transparent' ? '#fff' : resolvedColor,
-              outline:
-                resolvedColor === 'transparent' || isLightColor(resolvedColor)
-                  ? '1px solid #bbb'
-                  : 'none',
-            }}
-          />
-        </div>
-        <MaterialSymbol name="arrow_drop_down" size={14} />
-      </button>
+        <button
+          type="button"
+          className="docx-advanced-color-picker-apply"
+          style={applyStyle}
+          onClick={handleApplyClick}
+          onMouseDown={(e) => e.preventDefault()}
+          onMouseEnter={() => setApplyHovered(true)}
+          onMouseLeave={() => setApplyHovered(false)}
+          disabled={disabled}
+          title={title || defaultTitle}
+          aria-label={title || defaultTitle}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+            <MaterialSymbol name={iconName} size={18} />
+            <div
+              style={{
+                ...S_COLOR_BAR,
+                backgroundColor: resolvedColor === 'transparent' ? '#fff' : resolvedColor,
+                outline:
+                  resolvedColor === 'transparent' || isLightColor(resolvedColor)
+                    ? '1px solid #bbb'
+                    : 'none',
+              }}
+            />
+          </div>
+        </button>
+        <button
+          type="button"
+          className="docx-advanced-color-picker-arrow"
+          style={arrowStyle}
+          onClick={toggleDropdown}
+          onMouseDown={(e) => e.preventDefault()}
+          onMouseEnter={() => setArrowHovered(true)}
+          onMouseLeave={() => setArrowHovered(false)}
+          disabled={disabled}
+          title={arrowTitle}
+          aria-label={arrowTitle}
+          aria-haspopup="true"
+          aria-expanded={isOpen}
+        >
+          <MaterialSymbol name="arrow_drop_down" size={14} />
+        </button>
+      </div>
 
       {isOpen && (
         <div

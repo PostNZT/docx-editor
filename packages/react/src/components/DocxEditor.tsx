@@ -326,6 +326,14 @@ export interface DocxEditorProps {
   renderTitleBarRight?: () => ReactNode;
   /** Translation overrides. Import a locale JSON file and pass it directly. */
   i18n?: Translations;
+  /**
+   * Starting offset for locally-allocated comment IDs. Useful for collaborative
+   * sessions where each peer must allocate IDs from a disjoint range to avoid
+   * collisions. Defaults to 0 (IDs start at 1, as before).
+   *
+   * Example: peer A passes `0`, peer B passes `1_000_000` → their IDs never collide.
+   */
+  commentIdBase?: number;
 }
 
 /**
@@ -574,8 +582,6 @@ function EditingModeDropdown({
 // MAIN COMPONENT
 // ============================================================================
 
-// Bumped on document load to be above all existing comment + tracked change IDs
-let nextCommentId = 1;
 const PENDING_COMMENT_ID = -1;
 
 /**
@@ -751,9 +757,9 @@ function findSelectionYPosition(
   return null;
 }
 
-function createComment(text: string, authorName: string, parentId?: number): Comment {
+function createComment(id: number, text: string, authorName: string, parentId?: number): Comment {
   return {
-    id: nextCommentId++,
+    id,
     author: authorName,
     date: new Date().toISOString(),
     content: [
@@ -820,6 +826,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
     documentNameEditable = true,
     renderTitleBarRight,
     i18n,
+    commentIdBase = 0,
   },
   ref
 ) {
@@ -859,6 +866,10 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
   const [showCommentsSidebar, setShowCommentsSidebar] = useState(false);
   const [expandedSidebarItem, setExpandedSidebarItem] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
+  // Per-instance comment ID allocator. Each peer in a collab session should
+  // pass a distinct `commentIdBase` to guarantee disjoint ID ranges (#257).
+  const nextCommentIdRef = useRef<number>(commentIdBase + 1);
+  const allocCommentId = () => nextCommentIdRef.current++;
   const [trackedChanges, setTrackedChanges] = useState<TrackedChangeEntry[]>([]);
   const [anchorPositions, setAnchorPositions] =
     useState<Map<string, number>>(EMPTY_ANCHOR_POSITIONS);
@@ -1107,7 +1118,7 @@ export const DocxEditor = forwardRef<DocxEditorRef, DocxEditorProps>(function Do
           }
         });
       }
-      if (maxId >= nextCommentId) nextCommentId = maxId + 1;
+      if (maxId >= nextCommentIdRef.current) nextCommentIdRef.current = maxId + 1;
     }
   }, [history.state]);
 
@@ -3493,7 +3504,7 @@ body { background: white; }
   const commentCallbacksRef = useRef<CommentCallbacks>({});
   commentCallbacksRef.current = {
     onCommentReply: (id, text) => {
-      const reply = createComment(text, author, id);
+      const reply = createComment(allocCommentId(), text, author, id);
       const parent = comments.find((c) => c.id === id);
       setComments((prev) => [...prev, reply]);
       if (parent) onCommentReply?.(reply, parent);
@@ -3521,7 +3532,7 @@ body { background: white; }
       if (target) onCommentDelete?.(target);
     },
     onAddComment: (addText) => {
-      const comment = createComment(addText, author);
+      const comment = createComment(allocCommentId(), addText, author);
       const view = pagedEditorRef.current?.getView();
       if (view && commentSelectionRange) {
         const { from, to } = commentSelectionRange;
@@ -3568,7 +3579,7 @@ body { background: white; }
       }
     },
     onTrackedChangeReply: (revisionId, text) => {
-      setComments((prev) => [...prev, createComment(text, author, revisionId)]);
+      setComments((prev) => [...prev, createComment(allocCommentId(), text, author, revisionId)]);
     },
   };
 

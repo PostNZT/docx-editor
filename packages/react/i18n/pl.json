@@ -70,7 +70,9 @@
     "subscriptShortcut": "Indeks dolny (Ctrl+=)",
     "imageProperties": "Właściwości obrazu",
     "imagePropertiesShortcut": "Właściwości obrazu (tekst alternatywny, obramowanie)...",
-    "clearFormatting": "Wyczyść formatowanie"
+    "clearFormatting": "Wyczyść formatowanie",
+    "openFontColorPicker": null,
+    "openHighlightColorPicker": null
   },
   "alignment": {
     "alignLeft": "Wyrównaj do lewej",
