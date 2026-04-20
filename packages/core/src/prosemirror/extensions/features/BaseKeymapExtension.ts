@@ -87,6 +87,14 @@ const INHERITED_PARA_ATTRS = [
   'spaceAfter',
   'spaceBefore',
   'contextualSpacing',
+  // Direct paragraph formatting (w:ind, w:jc) must carry forward on Enter —
+  // Word's behavior. Without these, hitting Enter in an indented paragraph
+  // drops the new paragraph back to the left margin.
+  'indentLeft',
+  'indentRight',
+  'indentFirstLine',
+  'hangingIndent',
+  'alignment',
 ] as const;
 
 /** Mark types that represent style-inherited formatting (font, size, color). */
