@@ -1,0 +1,742 @@
+/**
+ * @postnzt/docx-js-editor
+ *
+ * A complete WYSIWYG DOCX editor with full Microsoft Word fidelity.
+ *
+ * Features:
+ * - Full text and paragraph formatting
+ * - Tables, images, shapes, text boxes
+ * - Hyperlinks, bookmarks, fields
+ * - Footnotes, lists, headers/footers
+ * - Page layout with margins and columns
+ * - DocumentAgent API for programmatic editing
+ * - Template variable substitution
+ * - AI-powered context menu
+ *
+ * CSS Styles:
+ * For optimal cursor visibility and selection highlighting, import the editor styles:
+ * ```
+ * import '@postnzt/docx-js-editor/styles/editor.css';
+ * ```
+ */
+
+// ============================================================================
+// VERSION
+// ============================================================================
+
+export const VERSION = '0.0.2';
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export {
+  DocxEditor,
+  type DocxEditorProps,
+  type DocxEditorRef,
+  type EditorMode,
+} from './components/DocxEditor';
+export { renderAsync, type RenderAsyncOptions, type DocxEditorHandle } from './renderAsync';
+export { type DocxInput, toArrayBuffer } from '@postnzt/docx-core/utils/docxInput';
+
+// ============================================================================
+// AGENT API
+// ============================================================================
+
+export { DocumentAgent } from '@postnzt/docx-core/agent/DocumentAgent';
+export { executeCommand, executeCommands } from '@postnzt/docx-core/agent/executor';
+export {
+  getAgentContext,
+  getDocumentSummary,
+  type AgentContextOptions,
+} from '@postnzt/docx-core/agent/context';
+export {
+  buildSelectionContext,
+  buildExtendedSelectionContext,
+  type SelectionContextOptions,
+  type ExtendedSelectionContext,
+} from '@postnzt/docx-core/agent/selectionContext';
+
+// ============================================================================
+// PARSER / SERIALIZER
+// ============================================================================
+
+export { parseDocx } from '@postnzt/docx-core/docx/parser';
+export {
+  serializeDocument as serializeDocx,
+  serializeDocumentBody,
+  serializeSectionProperties,
+} from '@postnzt/docx-core/docx/serializer/documentSerializer';
+export {
+  processTemplate,
+  processTemplateDetailed,
+  processTemplateAsBlob,
+  getTemplateTags,
+  validateTemplate,
+  type ProcessTemplateOptions,
+  type ProcessTemplateResult,
+} from '@postnzt/docx-core/utils/processTemplate';
+
+// ============================================================================
+// DOCUMENT CREATION
+// ============================================================================
+
+export {
+  createEmptyDocument,
+  createDocumentWithText,
+  type CreateEmptyDocumentOptions,
+} from '@postnzt/docx-core/utils/createDocument';
+
+// ============================================================================
+// FONT LOADER
+// ============================================================================
+
+export {
+  loadFont,
+  loadFonts,
+  loadFontFromBuffer,
+  isFontLoaded,
+  isLoading as isFontsLoading,
+  getLoadedFonts,
+  onFontsLoaded,
+  canRenderFont,
+  preloadCommonFonts,
+} from '@postnzt/docx-core/utils/fontLoader';
+
+// ============================================================================
+// UI COMPONENTS
+// ============================================================================
+
+export {
+  Toolbar,
+  type ToolbarProps,
+  ToolbarButton,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from './components/Toolbar';
+export {
+  EditorToolbar,
+  type EditorToolbarProps,
+  type TitleBarProps,
+  type LogoProps,
+  type DocumentNameProps,
+  type TitleBarRightProps,
+  type FormattingBarProps,
+} from './components/EditorToolbar';
+export { FormattingBar } from './components/FormattingBar';
+export {
+  ContextMenu,
+  type ContextMenuProps,
+  useContextMenu,
+  getActionShortcut,
+  isActionAvailable,
+  getDefaultActions,
+  getAllActions,
+} from './components/ContextMenu';
+export {
+  ResponsePreview,
+  type ResponsePreviewProps,
+  useResponsePreview,
+  type ResponsePreviewState,
+  createMockResponse,
+  createErrorResponse,
+} from './components/ResponsePreview';
+export {
+  TextContextMenu,
+  type TextContextMenuProps,
+  type TextContextAction,
+  type TextContextMenuItem,
+  type UseTextContextMenuOptions,
+  type UseTextContextMenuReturn,
+  useTextContextMenu,
+  getTextActionLabel,
+  getTextActionShortcut,
+  getDefaultTextContextMenuItems,
+  isTextActionAvailable,
+} from './components/TextContextMenu';
+
+// ============================================================================
+// ERROR HANDLING
+// ============================================================================
+
+export {
+  ErrorBoundary,
+  type ErrorBoundaryProps,
+  ErrorProvider,
+  useErrorNotifications,
+  type ErrorContextValue,
+  type ErrorNotification,
+  type ErrorSeverity,
+  ParseErrorDisplay,
+  type ParseErrorDisplayProps,
+  UnsupportedFeatureWarning,
+  type UnsupportedFeatureWarningProps,
+  isParseError,
+  getUserFriendlyMessage,
+} from './components/ErrorBoundary';
+
+// ============================================================================
+// UI CONTROLS
+// ============================================================================
+
+export { ZoomControl, type ZoomControlProps } from './components/ui/ZoomControl';
+export { FontPicker, type FontPickerProps, type FontOption } from './components/ui/FontPicker';
+export { FontSizePicker, type FontSizePickerProps } from './components/ui/FontSizePicker';
+export {
+  LineSpacingPicker,
+  type LineSpacingPickerProps,
+  type LineSpacingOption,
+} from './components/ui/LineSpacingPicker';
+export { ColorPicker, type ColorPickerProps, type ColorOption } from './components/ui/ColorPicker';
+export { AdvancedColorPicker } from './components/ui/AdvancedColorPicker';
+export { StylePicker, type StylePickerProps, type StyleOption } from './components/ui/StylePicker';
+export { AlignmentButtons, type AlignmentButtonsProps } from './components/ui/AlignmentButtons';
+export {
+  ListButtons,
+  type ListButtonsProps,
+  type ListState,
+  createDefaultListState,
+} from './components/ui/ListButtons';
+export {
+  TableToolbar,
+  type TableToolbarProps,
+  type TableContext,
+  type TableSelection,
+  type TableAction,
+  createTableContext,
+  addRow,
+  deleteRow,
+  addColumn,
+  deleteColumn,
+  mergeCells,
+  splitCell,
+  getColumnCount,
+  getCellAt,
+} from './components/ui/TableToolbar';
+export {
+  HorizontalRuler,
+  type HorizontalRulerProps,
+  getRulerDimensions,
+  getMarginInUnits,
+  parseMarginFromUnits,
+  positionToMargin,
+} from './components/ui/HorizontalRuler';
+export {
+  PrintButton,
+  type PrintButtonProps,
+  PrintStyles,
+  type PrintOptions,
+  triggerPrint,
+  openPrintWindow,
+  getDefaultPrintOptions,
+  parsePageRange,
+  formatPageRange as formatPrintPageRange,
+  isPrintSupported,
+} from './components/ui/PrintPreview';
+export { TableBorderPicker, type TableBorderPickerProps } from './components/ui/TableBorderPicker';
+export {
+  TableBorderColorPicker,
+  type TableBorderColorPickerProps,
+} from './components/ui/TableBorderColorPicker';
+export {
+  TableBorderWidthPicker,
+  type TableBorderWidthPickerProps,
+} from './components/ui/TableBorderWidthPicker';
+export {
+  TableCellFillPicker,
+  type TableCellFillPickerProps,
+} from './components/ui/TableCellFillPicker';
+export { TableMergeButton, type TableMergeButtonProps } from './components/ui/TableMergeButton';
+export {
+  TableInsertButtons,
+  type TableInsertButtonsProps,
+} from './components/ui/TableInsertButtons';
+export { TableMoreDropdown, type TableMoreDropdownProps } from './components/ui/TableMoreDropdown';
+export {
+  UnsavedIndicator,
+  type UnsavedIndicatorProps,
+  type IndicatorVariant,
+  type IndicatorPosition,
+  type UseUnsavedChangesOptions,
+  type UseUnsavedChangesReturn,
+  useUnsavedChanges,
+  getVariantLabel,
+  getAllVariants as getAllIndicatorVariants,
+  getAllPositions as getAllIndicatorPositions,
+  createChangeTracker,
+} from './components/ui/UnsavedIndicator';
+export {
+  LoadingIndicator,
+  type LoadingIndicatorProps,
+  type LoadingVariant,
+  type LoadingSize,
+  type UseLoadingOptions,
+  type UseLoadingReturn,
+  type LoadingOperation,
+  useLoading,
+  useLoadingOperations,
+  getLoadingVariantLabel,
+  getAllLoadingVariants,
+  getAllLoadingSizes,
+  delay,
+} from './components/ui/LoadingIndicator';
+export {
+  ResponsiveToolbar,
+  type ResponsiveToolbarProps,
+  type ToolbarItem,
+  type ToolbarItemPriority,
+  type UseResponsiveToolbarOptions,
+  type UseResponsiveToolbarReturn,
+  ToolbarGroup as ResponsiveToolbarGroup,
+  type ToolbarGroupProps as ResponsiveToolbarGroupProps,
+  useResponsiveToolbar,
+  createToolbarItem,
+  createToolbarItems,
+  getRecommendedPriority,
+} from './components/ui/ResponsiveToolbar';
+
+// ============================================================================
+// DIALOGS
+// ============================================================================
+
+export {
+  FindReplaceDialog,
+  type FindReplaceDialogProps,
+  type FindReplaceOptions,
+  type FindOptions,
+  type FindMatch,
+  type FindResult,
+  type FindReplaceState,
+  type UseFindReplaceReturn,
+  useFindReplace,
+  findInDocument,
+  findInParagraph,
+  findAllMatches,
+  scrollToMatch,
+  createDefaultFindOptions,
+  createSearchPattern,
+  replaceAllInContent,
+  replaceFirstInContent,
+  getMatchCountText,
+  isEmptySearch,
+  escapeRegexString,
+  getDefaultHighlightOptions,
+  type HighlightOptions,
+} from './components/dialogs/FindReplaceDialog';
+export {
+  HyperlinkDialog,
+  type HyperlinkDialogProps,
+  type HyperlinkData,
+  useHyperlinkDialog,
+} from './components/dialogs/HyperlinkDialog';
+export {
+  InsertTableDialog,
+  type InsertTableDialogProps,
+  type TableConfig,
+  useInsertTableDialog,
+  createDefaultTableConfig,
+  isValidTableConfig,
+  clampTableConfig,
+  formatTableDimensions,
+  getTablePresets,
+} from './components/dialogs/InsertTableDialog';
+export {
+  InsertImageDialog,
+  type InsertImageDialogProps,
+  type ImageData,
+  useInsertImageDialog,
+  isValidImageFile,
+  getSupportedImageExtensions,
+  getImageAcceptString,
+  calculateFitDimensions,
+  dataUrlToBlob,
+  getImageDimensions,
+  formatFileSize,
+} from './components/dialogs/InsertImageDialog';
+export {
+  InsertSymbolDialog,
+  type InsertSymbolDialogProps,
+  type SymbolCategory,
+  useInsertSymbolDialog,
+  getSymbolCategories,
+  getSymbolsByCategory,
+  getSymbolInfo as getSymbolUnicodeInfo,
+  searchSymbols,
+  symbolFromCodePoint,
+  SYMBOL_CATEGORIES,
+} from './components/dialogs/InsertSymbolDialog';
+export {
+  PasteSpecialDialog,
+  type PasteSpecialDialogProps,
+  type PasteOption,
+  type UsePasteSpecialReturn,
+  type UsePasteSpecialOptions,
+  usePasteSpecial,
+  getPasteOption,
+  getAllPasteOptions,
+  getDefaultPasteOption,
+  isPasteSpecialShortcut,
+} from './components/dialogs/PasteSpecialDialog';
+export {
+  KeyboardShortcutsDialog,
+  type KeyboardShortcutsDialogProps,
+  type KeyboardShortcut as DialogKeyboardShortcut,
+  type ShortcutCategory,
+  type UseKeyboardShortcutsDialogOptions,
+  type UseKeyboardShortcutsDialogReturn,
+  useKeyboardShortcutsDialog,
+  getDefaultShortcuts,
+  getShortcutsByCategory,
+  getCommonShortcuts,
+  getCategoryLabel,
+  getAllCategories,
+  formatShortcutKeys,
+} from './components/dialogs/KeyboardShortcutsDialog';
+
+// ============================================================================
+// I18N
+// ============================================================================
+
+export {
+  LocaleProvider,
+  useTranslation,
+  type LocaleProviderProps,
+  type LocaleStrings,
+  type Translations,
+  type PartialLocaleStrings,
+  type TranslationKey,
+} from './i18n';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+// Document types
+export type {
+  Document,
+  DocxPackage,
+  DocumentBody,
+  BlockContent,
+  Paragraph,
+  Run,
+  RunContent,
+  TextContent,
+  Table,
+  TableRow,
+  TableCell,
+  Image,
+  Shape,
+  TextBox,
+  Hyperlink,
+  BookmarkStart,
+  BookmarkEnd,
+  Field,
+  Theme,
+  ThemeColorScheme,
+  ThemeFont,
+  ThemeFontScheme,
+  Style,
+  StyleDefinitions,
+  TextFormatting,
+  ParagraphFormatting,
+  SectionProperties,
+  HeaderFooter,
+  HeaderReference,
+  FooterReference,
+  Footnote,
+  Endnote,
+  ListLevel,
+  NumberingDefinitions,
+  Relationship,
+  Comment,
+} from '@postnzt/docx-core/types/document';
+
+// Agent API types
+export type {
+  AIAction,
+  AIActionRequest,
+  AgentResponse,
+  AgentContext,
+  SelectionContext,
+  Range,
+  Position,
+  ParagraphContext,
+  SuggestedAction,
+  AgentCommand,
+  InsertTextCommand,
+  ReplaceTextCommand,
+  DeleteTextCommand,
+  FormatTextCommand,
+  InsertTableCommand,
+  InsertImageCommand,
+  InsertHyperlinkCommand,
+  SetVariableCommand,
+  ApplyStyleCommand,
+} from '@postnzt/docx-core/types/agentApi';
+
+// ============================================================================
+// HOOKS
+// ============================================================================
+
+export {
+  useTableSelection,
+  TABLE_DATA_ATTRIBUTES,
+  type TableSelectionState,
+  type UseTableSelectionReturn,
+  type UseTableSelectionOptions,
+} from './hooks/useTableSelection';
+
+export {
+  useAutoSave,
+  formatLastSaveTime,
+  getAutoSaveStatusLabel,
+  getAutoSaveStorageSize,
+  formatStorageSize,
+  isAutoSaveSupported,
+  type AutoSaveStatus,
+  type UseAutoSaveOptions,
+  type UseAutoSaveReturn,
+  type SavedDocumentData,
+} from './hooks/useAutoSave';
+
+export {
+  useWheelZoom,
+  getZoomPresets,
+  findNearestZoomPreset,
+  getNextZoomPreset,
+  getPreviousZoomPreset,
+  formatZoom,
+  parseZoom,
+  isZoomPreset,
+  clampZoom,
+  ZOOM_PRESETS,
+  type UseWheelZoomOptions,
+  type UseWheelZoomReturn,
+} from './hooks/useWheelZoom';
+
+// ============================================================================
+// UTILITIES
+// ============================================================================
+
+export {
+  twipsToPixels,
+  pixelsToTwips,
+  formatPx,
+  emuToPixels,
+  pointsToPixels,
+  halfPointsToPixels,
+  pixelsToEmu,
+  emuToTwips,
+  twipsToEmu,
+} from '@postnzt/docx-core/utils/units';
+export {
+  resolveColor,
+  resolveHighlightColor,
+  resolveShadingColor,
+  parseColorString,
+  createThemeColor,
+  createRgbColor,
+  darkenColor,
+  lightenColor,
+  blendColors,
+  getContrastingColor,
+  isBlack,
+  isWhite,
+  colorsEqual,
+} from '@postnzt/docx-core/utils/colorResolver';
+export {
+  createPageBreak,
+  createColumnBreak,
+  createLineBreak,
+  createPageBreakRun,
+  createPageBreakParagraph,
+  insertPageBreak,
+  createHorizontalRule,
+  insertHorizontalRule,
+  isPageBreak,
+  isColumnBreak,
+  isLineBreak,
+  isBreakContent,
+  hasPageBreakBefore,
+  countPageBreaks,
+  findPageBreaks,
+  removePageBreak,
+  type InsertPosition,
+} from '@postnzt/docx-core/utils/insertOperations';
+
+// Selection highlighting
+export {
+  useSelectionHighlight,
+  generateOverlayElements,
+  type UseSelectionHighlightOptions,
+  type UseSelectionHighlightReturn,
+  type SelectionOverlayProps,
+} from './hooks/useSelectionHighlight';
+
+export {
+  DEFAULT_SELECTION_STYLE,
+  HIGH_CONTRAST_SELECTION_STYLE,
+  SELECTION_CSS_VARS,
+  getSelectionRects,
+  mergeAdjacentRects,
+  getMergedSelectionRects,
+  getHighlightRectStyle,
+  generateSelectionCSS,
+  hasActiveSelection,
+  getSelectedText,
+  isSelectionWithin,
+  getSelectionBoundingRect,
+  highlightTextRange,
+  selectRange,
+  clearSelection,
+  isSelectionBackwards,
+  normalizeSelectionDirection,
+  injectSelectionStyles,
+  removeSelectionStyles,
+  areSelectionStylesInjected,
+  createSelectionChangeHandler,
+  type HighlightRect,
+  type SelectionHighlightConfig,
+  type SelectionRange,
+} from '@postnzt/docx-core/utils/selectionHighlight';
+
+// Text selection utilities for word/paragraph selection
+export {
+  isWordCharacter,
+  isWhitespace,
+  findWordBoundaries,
+  getWordAt,
+  findWordAt,
+  selectWordAtCursor,
+  selectWordInTextNode,
+  expandSelectionToWordBoundaries,
+  selectParagraphAtCursor,
+  handleClickForMultiClick,
+  createDoubleClickWordSelector,
+  createTripleClickParagraphSelector,
+  type WordSelectionResult,
+} from '@postnzt/docx-core/utils/textSelection';
+
+// Keyboard navigation
+export {
+  // Types
+  type NavigationDirection,
+  type NavigationUnit,
+  type NavigationAction,
+  type KeyboardShortcut,
+  // Word boundary detection
+  isWordCharacter as isWordChar,
+  isWhitespace as isWhitespaceChar,
+  isPunctuation,
+  findWordStart,
+  findWordEnd,
+  findNextWordStart,
+  findPreviousWordStart,
+  // Line boundary detection
+  findVisualLineStart,
+  findVisualLineEnd,
+  // DOM selection utilities
+  getSelectionInfo,
+  setSelectionPosition,
+  extendSelectionTo,
+  moveByWord,
+  moveToLineEdge,
+  // Keyboard event handling
+  parseNavigationAction,
+  handleNavigationKey,
+  isNavigationKey,
+  // Selection word expansion
+  expandSelectionToWord,
+  getWordAtCursor,
+  // Keyboard shortcut utilities
+  matchesShortcut,
+  NAVIGATION_SHORTCUTS,
+  describeShortcut,
+  getNavigationShortcutDescriptions,
+} from '@postnzt/docx-core/utils/keyboardNavigation';
+
+// Clipboard utilities
+export {
+  useClipboard,
+  createSelectionFromDOM,
+  getSelectionRuns,
+  type ClipboardSelection,
+  type UseClipboardOptions,
+  type UseClipboardReturn,
+} from './hooks/useClipboard';
+
+export {
+  copyRuns,
+  copyParagraphs,
+  readFromClipboard,
+  handlePasteEvent,
+  htmlToRuns,
+  cleanWordHtml,
+  isWordHtml,
+  isEditorHtml,
+  createClipboardHandlers,
+  runsToClipboardContent,
+  paragraphsToClipboardContent,
+  writeToClipboard,
+  parseClipboardHtml,
+  INTERNAL_CLIPBOARD_TYPE,
+  CLIPBOARD_TYPES,
+  type ClipboardContent,
+  type ParsedClipboardContent,
+  type ClipboardOptions,
+} from '@postnzt/docx-core/utils/clipboard';
+
+// ============================================================================
+// PLUGIN API
+// ============================================================================
+
+export {
+  PluginHost,
+  PLUGIN_HOST_STYLES,
+  type EditorPlugin,
+  type PluginPanelProps,
+  type PanelConfig,
+  type PluginContext,
+  type PluginHostProps,
+  type PluginHostRef,
+  type RenderedDomContext,
+  type PositionCoordinates,
+  type ReactSidebarItem,
+  type SidebarItemRenderProps,
+  type SidebarItemContext,
+  type SidebarItem,
+} from './plugin-api';
+
+// ============================================================================
+// PLUGINS
+// ============================================================================
+
+// Template Plugin (Editor UI)
+export {
+  templatePlugin,
+  createPlugin as createTemplatePlugin,
+  createTemplatePlugin as createTemplateProseMirrorPlugin,
+  templatePluginKey,
+  getTemplateTags as getTemplatePluginTags,
+  setHoveredElement,
+  setSelectedElement,
+  TEMPLATE_DECORATION_STYLES,
+  type TemplateTag,
+  type TagType,
+} from './plugins/template';
+
+// ============================================================================
+// CORE PLUGIN SYSTEM
+// ============================================================================
+
+export {
+  pluginRegistry,
+  PluginRegistry,
+  registerPlugins,
+  docxtemplaterPlugin,
+  type CorePlugin,
+  type McpToolDefinition,
+  type McpToolHandler,
+  type McpToolResult,
+  type McpSession,
+} from '@postnzt/docx-core/core-plugins';

@@ -1,0 +1,93 @@
+{
+  "name": "@postnzt/docx-core",
+  "version": "0.0.28",
+  "private": true,
+  "sideEffects": false,
+  "description": "Framework-agnostic core for DOCX parsing, editing, and rendering",
+  "main": "./dist/core.js",
+  "module": "./dist/core.mjs",
+  "types": "./dist/core.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.mjs",
+      "require": "./dist/core.js"
+    },
+    "./headless": {
+      "types": "./dist/headless.d.ts",
+      "import": "./dist/headless.mjs",
+      "require": "./dist/headless.js"
+    },
+    "./core-plugins": {
+      "types": "./dist/core-plugins.d.ts",
+      "import": "./dist/core-plugins.mjs",
+      "require": "./dist/core-plugins.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.mjs",
+      "require": "./dist/mcp.js"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.mjs",
+      "require": "./dist/*.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "headless": [
+        "./dist/headless.d.ts"
+      ],
+      "core-plugins": [
+        "./dist/core-plugins.d.ts"
+      ],
+      "mcp": [
+        "./dist/mcp.d.ts"
+      ]
+    }
+  },
+  "bin": {
+    "docx-editor-mcp": "./dist/mcp-cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "docxtemplater": "^3.50.0",
+    "jszip": "^3.10.1",
+    "pizzip": "^3.1.7",
+    "prosemirror-commands": "^1.5.2",
+    "prosemirror-dropcursor": "^1.8.2",
+    "prosemirror-history": "^1.4.0",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.19.4",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-transform": "^1.10.2",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-view": "^1.32.7",
+    "xml-js": "^1.6.11"
+  },
+  "keywords": [
+    "docx",
+    "editor",
+    "template",
+    "word",
+    "document",
+    "prosemirror"
+  ],
+  "author": "EigenPal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eigenpal/docx-js-editor.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
