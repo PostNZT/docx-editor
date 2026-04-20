@@ -435,20 +435,25 @@ function computeCaretHeightFromElement(
   textNode?: Text,
   charIndex?: number
 ): { height: number; yOffset: number } {
+  // The caller passes `rangeRect.top` (or `spanRect.top`) as the caret Y.
+  // Those rects already land at the glyph top because the browser draws the
+  // inline text starting one half-leading below the line-box top. Adding an
+  // extra half-leading offset here would double-apply it — that's what put
+  // the caret ~9px below the text in double-spaced paragraphs. Keep yOffset
+  // at 0 so the caret hugs the glyph top regardless of line spacing.
+
   // Method 1: Use Range API to measure actual character height
   if (textNode && charIndex !== undefined && charIndex < textNode.length) {
     try {
       const doc = el.ownerDocument;
       if (doc) {
         const range = doc.createRange();
-        // Measure the character AT the caret position (or the one before it)
         const measureAt = Math.min(charIndex, textNode.length - 1);
         range.setStart(textNode, measureAt);
         range.setEnd(textNode, measureAt + 1);
         const rect = range.getBoundingClientRect();
         if (rect.height > 0 && rect.height < lineHeight) {
-          const yOffset = Math.max(0, (lineHeight - rect.height) / 2);
-          return { height: rect.height, yOffset };
+          return { height: rect.height, yOffset: 0 };
         }
       }
     } catch {
@@ -462,18 +467,16 @@ function computeCaretHeightFromElement(
     if (computed?.fontSize) {
       const fontSizePx = parseFloat(computed.fontSize);
       if (fontSizePx > 0 && fontSizePx < lineHeight) {
-        const yOffset = Math.max(0, (lineHeight - fontSizePx) / 2);
-        return { height: fontSizePx, yOffset };
+        return { height: fontSizePx, yOffset: 0 };
       }
     }
   } catch {
     /* ignore */
   }
 
-  // Method 3: Fallback
+  // Method 3: Fallback — fit a reasonable caret at the glyph top
   const caretHeight = Math.max(12, lineHeight * 0.55);
-  const yOffset = (lineHeight - caretHeight) / 2;
-  return { height: caretHeight, yOffset };
+  return { height: caretHeight, yOffset: 0 };
 }
 
 /**

@@ -594,12 +594,18 @@ export function getCaretPosition(
             // not the line height (which includes spacing for double/triple spacing).
             // This makes the caret visually match the text characters.
             const caretHeight = line.ascent + line.descent;
-            // Center the caret vertically within the line
-            const caretYOffset = (line.lineHeight - caretHeight) / 2;
+
+            // `fragment.y + lineOffset + pageTopY` already resolves to the
+            // glyph top — the upstream measurement accounts for the line-box
+            // half-leading that CSS applies when line-height > font-size. The
+            // prior code added a second `(lineHeight - caretHeight)/2` offset
+            // here, which double-applied half-leading and dropped the caret
+            // ~9px below the text in double-spaced paragraphs. Don't add any
+            // extra vertical offset — the caret should hug the text exactly.
 
             return {
               x: fragment.x + indentLeft + alignmentOffset + x,
-              y: fragment.y + lineOffset + pageTopY + caretYOffset,
+              y: fragment.y + lineOffset + pageTopY,
               height: caretHeight,
               pageIndex,
             };
