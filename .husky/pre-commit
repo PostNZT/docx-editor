@@ -10,4 +10,4 @@ fi
 
 # Run lint-staged (prettier + eslint on staged files)
 echo "Running lint-staged..."
-npx lint-staged
+bun x lint-staged
