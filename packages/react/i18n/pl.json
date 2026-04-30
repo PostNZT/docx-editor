@@ -72,7 +72,8 @@
     "imagePropertiesShortcut": "Właściwości obrazu (tekst alternatywny, obramowanie)...",
     "clearFormatting": "Wyczyść formatowanie",
     "openFontColorPicker": null,
-    "openHighlightColorPicker": null
+    "openHighlightColorPicker": null,
+    "moreOptions": null
   },
   "alignment": {
     "alignLeft": "Wyrównaj do lewej",

@@ -72,7 +72,8 @@
     "subscriptShortcut": "Subscript (Ctrl+=)",
     "imageProperties": "Image properties",
     "imagePropertiesShortcut": "Image properties (alt text, border)...",
-    "clearFormatting": "Clear formatting"
+    "clearFormatting": "Clear formatting",
+    "moreOptions": "More options"
   },
   "alignment": {
     "alignLeft": "Align Left",

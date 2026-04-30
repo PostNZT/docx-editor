@@ -31,6 +31,7 @@ import { cn } from '../lib/utils';
 import { ToolbarButton, ToolbarGroup } from './Toolbar';
 import type { ToolbarProps, FormattingAction } from './Toolbar';
 import { EditorToolbarContext } from './EditorToolbarContext';
+import { ResponsiveGroups, type ResponsiveGroupSpec } from './ui/ResponsiveGroups';
 
 const ICON_SIZE = 18;
 
@@ -341,22 +342,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
 
   // ── Render ────────────────────────────────────────────────────────────
 
-  return (
-    <div
-      ref={barRef}
-      className={cn(
-        !inline &&
-          'flex items-center px-2 py-1 bg-[#f1f5f9] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
-        className
-      )}
-      style={inline ? { display: 'contents', ...style } : style}
-      role={inline ? undefined : 'toolbar'}
-      aria-label={inline ? undefined : t('toolbar.ariaLabel')}
-      data-testid={inline ? undefined : 'formatting-bar'}
-      onMouseDown={inline ? undefined : handleBarMouseDown}
-      onMouseUp={inline ? undefined : handleBarMouseUp}
-    >
-      {/* Undo/Redo Group */}
+  // Build the group specs once. Priority: higher = stays visible longer.
+  // Contextual groups (image/table) get the highest priority while active so
+  // they don't get pushed into the overflow when the user needs them.
+  const groups: ResponsiveGroupSpec[] = [];
+
+  groups.push({
+    id: 'history',
+    priority: 100,
+    content: (
       <ToolbarGroup label={t('formattingBar.groups.history')}>
         <ToolbarButton
           onClick={handleUndo}
@@ -375,9 +369,14 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           <MaterialSymbol name="redo" size={ICON_SIZE} />
         </ToolbarButton>
       </ToolbarGroup>
+    ),
+  });
 
-      {/* Zoom Control */}
-      {showZoomControl && (
+  if (showZoomControl) {
+    groups.push({
+      id: 'zoom',
+      priority: 30,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.zoom')}>
           <ZoomControl
             value={zoom}
@@ -389,10 +388,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             showButtons={false}
           />
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Style Picker */}
-      {showStylePicker && (
+  if (showStylePicker) {
+    groups.push({
+      id: 'style',
+      priority: 50,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.styles')}>
           <StylePicker
             value={currentFormatting.styleId || 'Normal'}
@@ -403,10 +407,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             width={120}
           />
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Font Family and Size Pickers */}
-      {(showFontPicker || showFontSizePicker) && (
+  if (showFontPicker || showFontSizePicker) {
+    groups.push({
+      id: 'font',
+      priority: 85,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.font')}>
           {showFontPicker && (
             <FontPicker
@@ -431,9 +440,14 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             />
           )}
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Text Formatting Group */}
+  groups.push({
+    id: 'text-format',
+    priority: 95,
+    content: (
       <ToolbarGroup label={t('formattingBar.groups.textFormatting')}>
         <ToolbarButton
           onClick={() => handleFormat('bold')}
@@ -500,8 +514,13 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           <MaterialSymbol name="link" size={ICON_SIZE} />
         </ToolbarButton>
       </ToolbarGroup>
+    ),
+  });
 
-      {/* Superscript/Subscript Group */}
+  groups.push({
+    id: 'script',
+    priority: 25,
+    content: (
       <ToolbarGroup label={t('formattingBar.groups.script')}>
         <ToolbarButton
           onClick={() => handleFormat('superscript')}
@@ -522,9 +541,14 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
           <MaterialSymbol name="subscript" size={ICON_SIZE} />
         </ToolbarButton>
       </ToolbarGroup>
+    ),
+  });
 
-      {/* Alignment Dropdown */}
-      {showAlignmentButtons && (
+  if (showAlignmentButtons) {
+    groups.push({
+      id: 'alignment',
+      priority: 75,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.alignment')}>
           <AlignmentButtons
             value={currentFormatting.alignment || 'left'}
@@ -532,10 +556,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             disabled={disabled}
           />
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* List Buttons and Line Spacing */}
-      {(showListButtons || showLineSpacingPicker) && (
+  if (showListButtons || showLineSpacingPicker) {
+    groups.push({
+      id: 'list-spacing',
+      priority: 65,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.listFormatting')}>
           {showListButtons && (
             <ListButtons
@@ -558,10 +587,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             />
           )}
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Image controls - shown when image is selected */}
-      {imageContext && onImageWrapType && (
+  if (imageContext && onImageWrapType) {
+    groups.push({
+      id: 'image',
+      priority: 110,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.image')}>
           <ImageWrapDropdown
             imageContext={imageContext}
@@ -582,10 +616,15 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             </ToolbarButton>
           )}
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Table Options - shown when cursor is in a table */}
-      {tableContext?.isInTable && onTableAction && (
+  if (tableContext?.isInTable && onTableAction) {
+    groups.push({
+      id: 'table',
+      priority: 110,
+      content: (
         <ToolbarGroup label={t('formattingBar.groups.table')}>
           <TableBorderPicker onAction={handleTableAction} disabled={disabled} />
           <TableBorderColorPicker
@@ -611,9 +650,14 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
             tableContext={tableContext}
           />
         </ToolbarGroup>
-      )}
+      ),
+    });
+  }
 
-      {/* Clear Formatting */}
+  groups.push({
+    id: 'clear',
+    priority: 35,
+    content: (
       <ToolbarButton
         onClick={() => handleFormat('clearFormatting')}
         disabled={disabled}
@@ -622,9 +666,34 @@ export function FormattingBar(explicitProps: FormattingBarProps) {
       >
         <MaterialSymbol name="format_clear" size={ICON_SIZE} />
       </ToolbarButton>
+    ),
+  });
 
-      {/* Custom toolbar items */}
-      {children}
-    </div>
+  if (inline) {
+    return (
+      <div ref={barRef} className={className} style={{ display: 'contents', ...style }}>
+        {groups.map((g) => (
+          <React.Fragment key={g.id}>{g.content}</React.Fragment>
+        ))}
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveGroups
+      groups={groups}
+      containerRef={barRef}
+      className={cn(
+        'flex items-center px-2 py-1 bg-[#f1f5f9] rounded-full min-h-[36px] mx-2 mb-1',
+        className
+      )}
+      style={style}
+      ariaLabel={t('toolbar.ariaLabel')}
+      testId="formatting-bar"
+      onMouseDown={handleBarMouseDown}
+      onMouseUp={handleBarMouseUp}
+      trailing={children}
+    />
   );
 }
