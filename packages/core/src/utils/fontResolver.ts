@@ -267,6 +267,46 @@ function detectFontCategory(fontName: string): FontCategory {
   return 'sans-serif';
 }
 
+const GENERIC_FAMILIES = new Set([
+  'serif',
+  'sans-serif',
+  'monospace',
+  'cursive',
+  'fantasy',
+  'system-ui',
+]);
+
+/**
+ * Extract the primary font name from a string that may be a CSS-style
+ * font-family list (e.g. `"Times New Roman", Times, serif`).
+ *
+ * Some DOCX exporters (notably web-based ones) put an entire CSS
+ * font-family value into a single rFonts attribute. Without unwrapping,
+ * the resolver treats the whole string as one unknown font name and the
+ * rendered CSS is broken.
+ */
+function extractPrimaryFontName(input: string): string {
+  if (!input.includes(',') && !input.includes('"') && !input.includes("'")) {
+    return input;
+  }
+  const parts = input.split(',');
+  for (const part of parts) {
+    const stripped = part
+      .trim()
+      .replace(/^['"]+|['"]+$/g, '')
+      .trim();
+    if (!stripped) continue;
+    if (GENERIC_FAMILIES.has(stripped.toLowerCase())) continue;
+    return stripped;
+  }
+  // All entries are generic/empty — return the first stripped part if any.
+  const first = parts[0]
+    ?.trim()
+    .replace(/^['"]+|['"]+$/g, '')
+    .trim();
+  return first || input;
+}
+
 /**
  * Resolve a DOCX font name to a Google Font and CSS fallback stack
  *
@@ -274,7 +314,8 @@ function detectFontCategory(fontName: string): FontCategory {
  * @returns Resolved font information
  */
 export function resolveFontFamily(docxFontName: string): ResolvedFont {
-  const normalizedName = docxFontName.trim().toLowerCase();
+  const primaryName = extractPrimaryFontName(docxFontName);
+  const normalizedName = primaryName.trim().toLowerCase();
 
   // Check if we have a direct mapping
   const mapping = FONT_MAPPINGS[normalizedName];
@@ -290,12 +331,12 @@ export function resolveFontFamily(docxFontName: string): ResolvedFont {
   }
 
   // No mapping - detect category and create fallback
-  const category = detectFontCategory(docxFontName);
+  const category = detectFontCategory(primaryName);
   const defaultFallback = DEFAULT_FALLBACKS[category];
 
   return {
     googleFont: null,
-    cssFallback: `${quoteFontName(docxFontName)}, ${defaultFallback}`,
+    cssFallback: `${quoteFontName(primaryName)}, ${defaultFallback}`,
     originalFont: docxFontName,
     hasGoogleEquivalent: false,
     singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
@@ -406,7 +447,7 @@ export function buildFontFamilyString(
  * @returns Google Font name or null
  */
 export function getGoogleFontEquivalent(docxFontName: string): string | null {
-  const normalizedName = docxFontName.trim().toLowerCase();
+  const normalizedName = extractPrimaryFontName(docxFontName).trim().toLowerCase();
   const mapping = FONT_MAPPINGS[normalizedName];
   return mapping?.googleFont ?? null;
 }
@@ -418,6 +459,6 @@ export function getGoogleFontEquivalent(docxFontName: string): string | null {
  * @returns true if there's a Google Fonts equivalent
  */
 export function hasGoogleFontEquivalent(docxFontName: string): boolean {
-  const normalizedName = docxFontName.trim().toLowerCase();
+  const normalizedName = extractPrimaryFontName(docxFontName).trim().toLowerCase();
   return normalizedName in FONT_MAPPINGS;
 }
