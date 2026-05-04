@@ -481,14 +481,23 @@ function computeCaretHeightFromElement(
 
 /**
  * Extract page size from section properties or use defaults.
+ *
+ * Uses `!== undefined` instead of truthiness so a legitimate 0 doesn't
+ * silently fall through to the default — same convention as getMargins.
  */
 function getPageSize(sectionProps: SectionProperties | null | undefined): {
   w: number;
   h: number;
 } {
   return {
-    w: sectionProps?.pageWidth ? twipsToPixels(sectionProps.pageWidth) : DEFAULT_PAGE_WIDTH,
-    h: sectionProps?.pageHeight ? twipsToPixels(sectionProps.pageHeight) : DEFAULT_PAGE_HEIGHT,
+    w:
+      sectionProps?.pageWidth !== undefined
+        ? twipsToPixels(sectionProps.pageWidth)
+        : DEFAULT_PAGE_WIDTH,
+    h:
+      sectionProps?.pageHeight !== undefined
+        ? twipsToPixels(sectionProps.pageHeight)
+        : DEFAULT_PAGE_HEIGHT,
   };
 }
 
