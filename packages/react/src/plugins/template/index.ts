@@ -32,7 +32,7 @@ import type {
   SidebarItemContext,
 } from '../../plugin-api/types';
 import type { EditorView } from 'prosemirror-view';
-import type { TemplateTag } from './prosemirror-plugin';
+import type { TemplateTag, TemplatePluginOptions } from './prosemirror-plugin';
 import {
   createTemplatePlugin,
   templatePluginKey,
@@ -49,10 +49,26 @@ import { TemplateChip, TEMPLATE_CHIP_STYLES } from './components/TemplateChip';
 /**
  * Plugin state interface
  */
-function selectTag(view: EditorView | null, tags: TemplateTag[], id: string) {
+function selectTag(
+  view: EditorView | null,
+  tags: TemplateTag[],
+  id: string,
+  options: TemplatePluginOptions
+) {
   if (!view) return;
-  setSelectedElement(view, id);
   const tag = tags.find((t) => t.id === id);
+  setSelectedElement(view, id);
+
+  if (options.enableVariableModal && options.onVariableClick && tag) {
+    options.onVariableClick({
+      name: tag.name,
+      rawTag: tag.rawTag,
+      type: tag.type,
+      tagId: tag.id,
+    });
+    return;
+  }
+
   if (tag) {
     const tr = view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(tag.from)));
     view.dispatch(tr);
@@ -68,18 +84,20 @@ interface TemplatePluginState {
 
 /**
  * Create the template plugin instance.
+ *
+ * @example
+ * ```tsx
+ * const plugin = createTemplatePlugin({
+ *   enableVariableModal: true,
+ *   onVariableClick: (variable) => openMyModal(variable),
+ * });
+ * <PluginHost plugins={[plugin]}>...</PluginHost>
+ * ```
  */
 export function createPlugin(
-  _options: {
-    /** @deprecated — panel is no longer used; template chips render in the unified sidebar */
-    defaultCollapsed?: boolean;
-    /** @deprecated */
-    panelPosition?: 'left' | 'right';
-    /** @deprecated */
-    panelWidth?: number;
-  } = {}
+  options: TemplatePluginOptions = {}
 ): ReactEditorPlugin<TemplatePluginState> {
-  const pmPlugin = createTemplatePlugin();
+  const pmPlugin = createTemplatePlugin(options);
 
   return {
     id: 'template',
@@ -122,7 +140,7 @@ export function createPlugin(
             onHover: (id: string | undefined) => {
               if (context.editorView) setHoveredElement(context.editorView, id);
             },
-            onSelect: (id: string) => selectTag(context.editorView, state.tags, id),
+            onSelect: (id: string) => selectTag(context.editorView, state.tags, id, options),
           }),
       }));
     },
@@ -142,7 +160,7 @@ export function createPlugin(
         onHover: (id: string | undefined) => {
           if (editorView) setHoveredElement(editorView, id);
         },
-        onSelect: (id: string) => selectTag(editorView, state.tags, id),
+        onSelect: (id: string) => selectTag(editorView, state.tags, id, options),
       });
     },
 
@@ -160,7 +178,12 @@ ${TEMPLATE_HIGHLIGHT_OVERLAY_STYLES}
 export const templatePlugin = createPlugin();
 
 // Re-export types and utilities
-export type { TemplateTag, TagType } from './prosemirror-plugin';
+export type {
+  TemplateTag,
+  TagType,
+  ClickedVariable,
+  TemplatePluginOptions,
+} from './prosemirror-plugin';
 export {
   createTemplatePlugin,
   templatePluginKey,

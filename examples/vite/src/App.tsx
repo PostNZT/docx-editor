@@ -1,5 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { DocxEditor, type DocxEditorRef, createEmptyDocument } from '@postnzt/docx-js-editor';
+import {
+  DocxEditor,
+  type DocxEditorRef,
+  createEmptyDocument,
+  PluginHost,
+  createTemplatePlugin,
+  type ClickedVariable,
+} from '@postnzt/docx-js-editor';
 import { ExampleSwitcher } from '../../shared/ExampleSwitcher';
 import { GitHubBadge } from '../../shared/GitHubBadge';
 
@@ -92,6 +99,23 @@ export function App() {
   const [documentBuffer, setDocumentBuffer] = useState<ArrayBuffer | null>(null);
   const [fileName, setFileName] = useState<string>('docx-editor-demo.docx');
   const [status, setStatus] = useState<string>('');
+  const [selectedVariable, setSelectedVariable] = useState<ClickedVariable | null>(null);
+
+  // ?flagOff=1 in the URL disables the modal feature gate — used by E2E to
+  // verify that clicks fall back to the default cursor-selection behavior.
+  const enableVariableModal = useMemo(() => {
+    if (typeof window === 'undefined') return true;
+    return !new URLSearchParams(window.location.search).has('flagOff');
+  }, []);
+
+  const templatePluginInstance = useMemo(
+    () =>
+      createTemplatePlugin({
+        enableVariableModal,
+        onVariableClick: setSelectedVariable,
+      }),
+    [enableVariableModal]
+  );
 
   const { zoom: autoZoom, isMobile } = useResponsiveLayout();
 
@@ -203,23 +227,116 @@ export function App() {
   return (
     <div style={styles.container}>
       <main style={styles.main}>
-        <DocxEditor
-          ref={editorRef}
-          document={documentBuffer ? undefined : currentDocument}
-          documentBuffer={documentBuffer}
-          author={randomAuthor}
-          onError={handleError}
-          onFontsLoaded={handleFontsLoaded}
-          showToolbar={true}
-          showRuler={!isMobile}
-          showZoomControl={true}
-          initialZoom={autoZoom}
-          renderLogo={renderLogo}
-          documentName={fileName}
-          onDocumentNameChange={setFileName}
-          renderTitleBarRight={renderTitleBarRight}
-        />
+        <PluginHost plugins={[templatePluginInstance]}>
+          <DocxEditor
+            ref={editorRef}
+            document={documentBuffer ? undefined : currentDocument}
+            documentBuffer={documentBuffer}
+            author={randomAuthor}
+            onError={handleError}
+            onFontsLoaded={handleFontsLoaded}
+            showToolbar={true}
+            showRuler={!isMobile}
+            showZoomControl={true}
+            initialZoom={autoZoom}
+            renderLogo={renderLogo}
+            documentName={fileName}
+            onDocumentNameChange={setFileName}
+            renderTitleBarRight={renderTitleBarRight}
+          />
+        </PluginHost>
       </main>
+      {selectedVariable && (
+        <div
+          data-testid="template-variable-modal"
+          onClick={() => setSelectedVariable(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(2px)',
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              background: '#ffffff',
+              borderRadius: 12,
+              padding: '28px 32px',
+              minWidth: 380,
+              maxWidth: 520,
+              boxShadow: '0 24px 48px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.15)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: '#7c3aed',
+                marginBottom: 8,
+              }}
+            >
+              Template Variable
+            </div>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 700,
+                color: '#0f172a',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {selectedVariable.name}
+            </h2>
+            <div
+              style={{
+                marginTop: 16,
+                padding: '12px 14px',
+                background: '#f8fafc',
+                borderRadius: 8,
+                border: '1px solid #e2e8f0',
+                fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+                fontSize: 13,
+                color: '#475569',
+              }}
+            >
+              {selectedVariable.rawTag}
+            </div>
+            <div style={{ marginTop: 20, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+              In the VanHorn integration, this modal would render the BE-driven{' '}
+              <code style={{ fontSize: 12, color: '#0f172a' }}>AwaitingInputModal</code> for{' '}
+              <strong>{selectedVariable.name}</strong> — pulling its field spec, type, and
+              validation from the template_spec.
+            </div>
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                onClick={() => setSelectedVariable(null)}
+                style={{
+                  padding: '8px 18px',
+                  background: 'linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%)',
+                  color: '#ffffff',
+                  border: '1px solid #6d28d9',
+                  borderRadius: 6,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow:
+                    '0 1px 2px rgba(76, 29, 149, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

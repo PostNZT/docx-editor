@@ -32,6 +32,46 @@ export interface TemplateTag {
 }
 
 /**
+ * Payload passed to {@link TemplatePluginOptions.onVariableClick}.
+ */
+export interface ClickedVariable {
+  /** The variable name (e.g. "CourtDistrict") */
+  name: string;
+  /** The full raw placeholder text (e.g. "{{ CourtDistrict }}") */
+  rawTag: string;
+  /** Tag classification */
+  type: TagType;
+  /** Internal stable ID — useful for calling setSelectedElement */
+  tagId: string;
+}
+
+/**
+ * Options for the template plugin.
+ *
+ * @example
+ * ```ts
+ * createTemplatePlugin({
+ *   enableVariableModal: true,
+ *   onVariableClick: (v) => openMyModal(v),
+ * });
+ * ```
+ */
+export interface TemplatePluginOptions {
+  /**
+   * Fires when the user clicks any template-variable chip
+   * (inline decoration, overlay rect, or sidebar chip).
+   * Only fires when `enableVariableModal` is true.
+   */
+  onVariableClick?: (variable: ClickedVariable) => void;
+  /**
+   * Feature flag. When false (default), clicks select the tag and move
+   * the cursor — existing behavior. When true, clicks fire
+   * `onVariableClick` (if provided) and the cursor stays put.
+   */
+  enableVariableModal?: boolean;
+}
+
+/**
  * Plugin state
  */
 interface TemplatePluginState {
@@ -42,9 +82,16 @@ interface TemplatePluginState {
 }
 
 /**
- * Regex to match template tags: {name}, {#name}, {/name}, {^name}, {@name}
+ * Regex to match template tags in three syntaxes:
+ *   jinja:        {{ name }}  or  {{name}}            (always a plain variable)
+ *   docxtemplater: {name}, {#name}, {/name}, {^name}, {@name}
+ *   bracket:      [[name]]                             (always a plain variable)
+ *
+ * Jinja must come first in the alternation — `{{name}}` would otherwise
+ * match the docxtemplater branch twice as two adjacent `{name}` tokens.
  */
-const TAG_REGEX = /\{([#/^@]?)([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\}/g;
+const TAG_REGEX =
+  /\{\{\s*(?<jinjaName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}|\{(?<prefix>[#/^@]?)(?<braceName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\}|\[\[(?<bracketName>[a-zA-Z_][a-zA-Z0-9_]*)\]\]/g;
 
 /**
  * Plugin key
@@ -91,12 +138,17 @@ function findTags(doc: ProseMirrorNode): TemplateTag[] {
 
   TAG_REGEX.lastIndex = 0;
   while ((match = TAG_REGEX.exec(combined)) !== null) {
-    const [rawTag, prefix, name] = match;
+    const rawTag = match[0];
+    const jinjaName = match.groups?.jinjaName;
+    const bracketName = match.groups?.bracketName;
+    const prefix = match.groups?.prefix ?? '';
+    const name = jinjaName ?? bracketName ?? match.groups?.braceName ?? '';
     const from = posMap[match.index];
     const to = posMap[match.index + rawTag.length - 1] + 1;
 
     let type: TagType;
-    if (prefix === '#') type = 'sectionStart';
+    if (jinjaName || bracketName) type = 'variable';
+    else if (prefix === '#') type = 'sectionStart';
     else if (prefix === '/') type = 'sectionEnd';
     else if (prefix === '^') type = 'invertedStart';
     else if (prefix === '@') type = 'raw';
@@ -134,23 +186,6 @@ function findTags(doc: ProseMirrorNode): TemplateTag[] {
 }
 
 /**
- * Get color for tag type
- */
-function getColor(type: TagType): string {
-  switch (type) {
-    case 'sectionStart':
-    case 'sectionEnd':
-      return '#3b82f6';
-    case 'invertedStart':
-      return '#8b5cf6';
-    case 'raw':
-      return '#ef4444';
-    default:
-      return '#f59e0b';
-  }
-}
-
-/**
  * Create decorations for tags
  */
 function createDecorations(
@@ -164,9 +199,8 @@ function createDecorations(
   for (const tag of tags) {
     const isHovered = tag.id === hoveredId;
     const isSelected = tag.id === selectedId;
-    const color = getColor(tag.type);
 
-    const classes = ['docx-template-tag'];
+    const classes = ['docx-template-tag', `docx-template-tag--${tag.type}`];
     if (isHovered) classes.push('hovered');
     if (isSelected) classes.push('selected');
 
@@ -174,7 +208,6 @@ function createDecorations(
       Decoration.inline(tag.from, tag.to, {
         class: classes.join(' '),
         'data-tag-id': tag.id,
-        style: `background-color: ${color}22; border-radius: 2px;`,
       })
     );
   }
@@ -197,7 +230,9 @@ function tagsStructureEqual(a: TemplateTag[], b: TemplateTag[]): boolean {
 /**
  * Create the template plugin
  */
-export function createTemplatePlugin(): Plugin<TemplatePluginState> {
+export function createTemplatePlugin(
+  options: TemplatePluginOptions = {}
+): Plugin<TemplatePluginState> {
   return new Plugin<TemplatePluginState>({
     key: templatePluginKey,
 
@@ -262,6 +297,14 @@ export function createTemplatePlugin(): Plugin<TemplatePluginState> {
 
         if (clicked) {
           view.dispatch(view.state.tr.setMeta(templatePluginKey, { selectedId: clicked.id }));
+          if (options.enableVariableModal && options.onVariableClick) {
+            options.onVariableClick({
+              name: clicked.name,
+              rawTag: clicked.rawTag,
+              type: clicked.type,
+              tagId: clicked.id,
+            });
+          }
           return true;
         }
 
@@ -321,20 +364,57 @@ export function setSelectedElement(view: EditorView, id: string | undefined): vo
 }
 
 /**
- * CSS styles for template decorations
+ * CSS styles for template decorations — purple 3D button look,
+ * applied to inline `{{var}}` / `[[var]]` / `{var}` tokens so the
+ * literal placeholder text reads as a clickable pill.
  */
 export const TEMPLATE_DECORATION_STYLES = `
 .docx-template-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 1px;
+  background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95em;
+  line-height: 1.3;
+  border: 1px solid #6d28d9;
+  border-radius: 6px;
+  box-shadow:
+    0 1px 2px rgba(76, 29, 149, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
   cursor: pointer;
-  transition: background-color 0.1s;
+  user-select: none;
+  white-space: nowrap;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  vertical-align: baseline;
 }
 
 .docx-template-tag:hover,
 .docx-template-tag.hovered {
-  filter: brightness(0.95);
+  background: linear-gradient(180deg, #c4b5fd 0%, #a78bfa 100%);
+  box-shadow:
+    0 3px 6px rgba(76, 29, 149, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.docx-template-tag:active {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.25),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(0);
 }
 
 .docx-template-tag.selected {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.35),
+    0 2px 4px rgba(76, 29, 149, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
 }
 `;

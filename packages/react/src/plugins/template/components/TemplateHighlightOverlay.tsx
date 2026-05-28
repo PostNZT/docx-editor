@@ -18,26 +18,12 @@ interface TemplateHighlightOverlayProps {
   onSelect?: (id: string) => void;
 }
 
-/** Colors for tag types (matching AnnotationPanel) */
-const HIGHLIGHT_COLORS: Record<TagType, string> = {
-  variable: 'rgba(245, 158, 11, 0.3)',
-  sectionStart: 'rgba(59, 130, 246, 0.3)',
-  sectionEnd: 'rgba(59, 130, 246, 0.3)',
-  invertedStart: 'rgba(139, 92, 246, 0.3)',
-  raw: 'rgba(239, 68, 68, 0.3)',
-};
-
-const HOVER_COLORS: Record<TagType, string> = {
-  variable: 'rgba(245, 158, 11, 0.5)',
-  sectionStart: 'rgba(59, 130, 246, 0.5)',
-  sectionEnd: 'rgba(59, 130, 246, 0.5)',
-  invertedStart: 'rgba(139, 92, 246, 0.5)',
-  raw: 'rgba(239, 68, 68, 0.5)',
-};
-
 interface HighlightRect {
   tagId: string;
   tagType: TagType;
+  varName: string;
+  label: string;
+  isFirstRect: boolean;
   x: number;
   y: number;
   width: number;
@@ -62,16 +48,19 @@ export function TemplateHighlightOverlay({
 
     for (const tag of tags) {
       const tagRects = context.getRectsForRange(tag.from, tag.to);
-      for (const rect of tagRects) {
+      tagRects.forEach((rect, rectIndex) => {
         rects.push({
           tagId: tag.id,
           tagType: tag.type,
+          varName: tag.name,
+          label: tag.name,
+          isFirstRect: rectIndex === 0,
           x: rect.x + containerOffset.x,
           y: rect.y + containerOffset.y,
           width: rect.width,
           height: rect.height,
         });
-      }
+      });
     }
 
     return rects;
@@ -110,27 +99,36 @@ export function TemplateHighlightOverlay({
       {highlights.map((rect, index) => {
         const isHovered = rect.tagId === hoveredId;
         const isSelected = rect.tagId === selectedId;
-        const color =
-          isHovered || isSelected ? HOVER_COLORS[rect.tagType] : HIGHLIGHT_COLORS[rect.tagType];
+        const stateClasses = [
+          'template-highlight',
+          isHovered ? 'hovered' : '',
+          isSelected ? 'selected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
 
         return (
           <div
             key={`${rect.tagId}-${index}`}
-            className={`template-highlight ${isHovered ? 'hovered' : ''} ${isSelected ? 'selected' : ''}`}
+            className={stateClasses}
+            data-tag-id={rect.tagId}
+            data-var-name={rect.varName}
             style={{
-              position: 'absolute',
               left: rect.x,
               top: rect.y,
               width: rect.width,
               height: rect.height,
-              backgroundColor: color,
-              borderRadius: 2,
-              cursor: 'pointer',
             }}
             onMouseEnter={() => onHover?.(rect.tagId)}
             onMouseLeave={() => onHover?.(undefined)}
-            onClick={() => onSelect?.(rect.tagId)}
-          />
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onSelect?.(rect.tagId);
+            }}
+          >
+            {rect.isFirstRect ? rect.label : ''}
+          </div>
         );
       })}
     </div>
@@ -149,16 +147,58 @@ export const TEMPLATE_HIGHLIGHT_OVERLAY_STYLES = `
 }
 
 .template-highlight {
+  position: absolute;
   pointer-events: auto;
-  transition: background-color 0.1s ease;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  border: 1px solid #6d28d9;
+  border-radius: 6px;
+  box-shadow:
+    0 1px 2px rgba(76, 29, 149, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
 
 .template-highlight:hover,
 .template-highlight.hovered {
-  filter: brightness(0.9);
+  background: linear-gradient(180deg, #c4b5fd 0%, #a78bfa 100%) !important;
+  box-shadow:
+    0 3px 6px rgba(76, 29, 149, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+  z-index: 2;
+}
+
+.template-highlight:active {
+  background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.25),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  transform: translateY(0);
 }
 
 .template-highlight.selected {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(139, 92, 246, 0.4),
+    0 2px 4px rgba(76, 29, 149, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+  z-index: 2;
 }
 `;

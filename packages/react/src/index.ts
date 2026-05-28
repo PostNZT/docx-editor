@@ -723,6 +723,8 @@ export {
   TEMPLATE_DECORATION_STYLES,
   type TemplateTag,
   type TagType,
+  type ClickedVariable,
+  type TemplatePluginOptions,
 } from './plugins/template';
 
 // ============================================================================
