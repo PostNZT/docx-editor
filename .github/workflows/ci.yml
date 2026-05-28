@@ -89,9 +89,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Publish changed packages and tag
+      - name: Publish changed packages, tag, and create GitHub Release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
           semver_bin="$GITHUB_WORKSPACE/node_modules/.bin/semver"
@@ -111,6 +112,10 @@ jobs:
               popd > /dev/null
               git tag -a "$tag" -m "Release $tag"
               git push origin "$tag"
+              gh release create "$tag" \
+                --title "$tag" \
+                --notes "Published to npm: https://www.npmjs.com/package/$name/v/$local_ver" \
+                --latest
             else
               echo "Skip $name: local=$local_ver, npm=$remote_ver (not greater)"
               popd > /dev/null
