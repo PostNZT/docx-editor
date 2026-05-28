@@ -106,14 +106,20 @@ jobs:
             fi
             remote_ver=$(npm view "$name" version 2>/dev/null || echo "")
             if [ -z "$remote_ver" ] || "$semver_bin" "$local_ver" -r ">$remote_ver" > /dev/null; then
+              tag="v$local_ver"
+              popd > /dev/null
+              if git rev-parse --verify --quiet "refs/tags/$tag" > /dev/null; then
+                echo "::error::Tag $tag already exists (created by a previous publish of another package). Bump $name to a different version to avoid collision."
+                exit 1
+              fi
+              pushd "$pkg_dir" > /dev/null
               echo "Publishing $name@$local_ver (npm has ${remote_ver:-<unpublished>})"
               npm publish --provenance --access public
-              tag="$name@$local_ver"
               popd > /dev/null
-              git tag -a "$tag" -m "Release $tag"
+              git tag -a "$tag" -m "$name@$local_ver"
               git push origin "$tag"
               gh release create "$tag" \
-                --title "$tag" \
+                --title "$tag — $name" \
                 --notes "Published to npm: https://www.npmjs.com/package/$name/v/$local_ver" \
                 --latest
             else
