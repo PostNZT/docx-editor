@@ -119,7 +119,7 @@ jobs:
               git tag -a "$tag" -m "$name@$local_ver"
               git push origin "$tag"
               gh release create "$tag" \
-                --title "$tag — $name" \
+                --title "$tag" \
                 --notes "Published to npm: https://www.npmjs.com/package/$name/v/$local_ver" \
                 --latest
             else
