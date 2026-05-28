@@ -94,20 +94,25 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -e
+          semver_bin="$GITHUB_WORKSPACE/node_modules/.bin/semver"
           for pkg_dir in packages/react packages/agent-use; do
             pushd "$pkg_dir" > /dev/null
             name=$(node -p "require('./package.json').name")
             local_ver=$(node -p "require('./package.json').version")
-            remote_ver=$(npm view "$name" version 2>/dev/null || echo "0.0.0")
-            if [ "$local_ver" != "$remote_ver" ] && [ "$(printf '%s\n%s\n' "$remote_ver" "$local_ver" | sort -V | tail -1)" = "$local_ver" ]; then
-              echo "Publishing $name@$local_ver (npm has $remote_ver)"
+            if ! "$semver_bin" "$local_ver" > /dev/null 2>&1; then
+              echo "::error::$name has invalid semver in package.json: $local_ver"
+              exit 1
+            fi
+            remote_ver=$(npm view "$name" version 2>/dev/null || echo "")
+            if [ -z "$remote_ver" ] || "$semver_bin" "$local_ver" -r ">$remote_ver" > /dev/null; then
+              echo "Publishing $name@$local_ver (npm has ${remote_ver:-<unpublished>})"
               npm publish --provenance --access public
               tag="$name@$local_ver"
               popd > /dev/null
               git tag -a "$tag" -m "Release $tag"
               git push origin "$tag"
             else
-              echo "Skip $name: local=$local_ver, npm=$remote_ver"
+              echo "Skip $name: local=$local_ver, npm=$remote_ver (not greater)"
               popd > /dev/null
             fi
           done
