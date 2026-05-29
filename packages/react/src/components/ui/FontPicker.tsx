@@ -43,16 +43,47 @@ export interface FontPickerProps {
 // DEFAULT FONTS
 // ============================================================================
 
+// Note: `fontFamily` is the CSS stack used only for the in-dropdown preview.
+// The value emitted on selection is the clean font `name` (see handleValueChange),
+// which is what gets stored in w:rFonts. Fallback stacks for rendering are derived
+// at paint time from the name via the core font resolver.
 const DEFAULT_FONTS: FontOption[] = [
   // Sans-serif
   { name: 'Arial', fontFamily: 'Arial, Helvetica, sans-serif', category: 'sans-serif' },
   { name: 'Calibri', fontFamily: '"Calibri", Arial, sans-serif', category: 'sans-serif' },
   { name: 'Helvetica', fontFamily: 'Helvetica, Arial, sans-serif', category: 'sans-serif' },
+  { name: 'Tahoma', fontFamily: 'Tahoma, Geneva, sans-serif', category: 'sans-serif' },
+  {
+    name: 'Trebuchet MS',
+    fontFamily: '"Trebuchet MS", Helvetica, sans-serif',
+    category: 'sans-serif',
+  },
   { name: 'Verdana', fontFamily: 'Verdana, Geneva, sans-serif', category: 'sans-serif' },
   { name: 'Open Sans', fontFamily: '"Open Sans", sans-serif', category: 'sans-serif' },
   { name: 'Roboto', fontFamily: 'Roboto, sans-serif', category: 'sans-serif' },
-  // Serif
+  // Serif (legal-document fonts grouped here: Times New Roman, Century Schoolbook,
+  // Bookman Old Style, Book Antiqua, Palatino Linotype, Garamond, etc.)
   { name: 'Times New Roman', fontFamily: '"Times New Roman", Times, serif', category: 'serif' },
+  {
+    name: 'Century Schoolbook',
+    fontFamily: '"Century Schoolbook", "Noto Serif", Georgia, serif',
+    category: 'serif',
+  },
+  {
+    name: 'Bookman Old Style',
+    fontFamily: '"Bookman Old Style", "Noto Serif", Georgia, serif',
+    category: 'serif',
+  },
+  {
+    name: 'Book Antiqua',
+    fontFamily: '"Book Antiqua", Palatino, Georgia, serif',
+    category: 'serif',
+  },
+  {
+    name: 'Palatino Linotype',
+    fontFamily: '"Palatino Linotype", Palatino, Georgia, serif',
+    category: 'serif',
+  },
   { name: 'Georgia', fontFamily: 'Georgia, serif', category: 'serif' },
   { name: 'Cambria', fontFamily: 'Cambria, Georgia, serif', category: 'serif' },
   { name: 'Garamond', fontFamily: 'Garamond, serif', category: 'serif' },
@@ -88,9 +119,10 @@ export function FontPicker({
   const handleValueChange = React.useCallback(
     (newValue: string) => {
       const font = fonts.find((f) => f.name === newValue);
-      if (font) {
-        onChange?.(font.fontFamily);
-      }
+      // Emit the clean font name (not the CSS preview stack) so it is stored
+      // verbatim in w:rFonts. Rendering fallbacks are derived from the name by
+      // the core font resolver; emitting the stack here corrupts the saved font.
+      onChange?.(font ? font.name : newValue);
     },
     [onChange, fonts]
   );

@@ -1191,14 +1191,17 @@ export function renderParagraphFragment(
     }
 
     // Add list marker to first line
-    // List first lines have special handling:
-    // - Marker starts at (indentLeft - hanging)
-    // - Text starts at indentLeft
-    // - The marker box fills the hanging space
+    // List first lines have special handling. The marker (and the first line's
+    // content) start at the paragraph's first-line origin, which per ECMA-376 is
+    // indentLeft shifted by the (mutually exclusive) firstLine/hanging offset:
+    // - Hanging indent:    marker at (indentLeft - hanging), text at indentLeft
+    // - First-line indent: marker at (indentLeft + firstLine), text further right
+    // The marker box fills the offset space, acting as the tab to the text.
     if (isFirstLine && block.attrs?.listMarker && !block.attrs?.listMarkerHidden) {
-      // Override padding for list first lines
-      // Marker position = indentLeft - hanging (where first line content starts)
-      const markerPos = Math.max(0, indentLeft - (indent?.hanging ?? 0));
+      // Override padding for list first lines.
+      // firstLine and hanging are mutually exclusive; one of them is 0.
+      const firstLineOffset = (indent?.firstLine ?? 0) - (indent?.hanging ?? 0);
+      const markerPos = Math.max(0, indentLeft + firstLineOffset);
       lineEl.style.paddingLeft = `${markerPos}px`;
       lineEl.style.textIndent = '0'; // Don't use textIndent for lists
 
@@ -1272,15 +1275,17 @@ function renderListMarker(
 
   // In Word, the marker character is followed by a tab that extends to the
   // text indent position. We emulate this by left-aligning the marker within
-  // the hanging indent box — the marker sits at the start and the remaining
+  // the indent-offset box — the marker sits at the start and the remaining
   // space acts as the tab gap, just like Word.
   span.textContent = marker;
 
-  // The marker box fills the hanging indent space
-  const hanging = indent?.hanging ?? 24; // Default 24px if not specified
+  // The marker box fills the first-line offset space (hanging for hanging-indent
+  // lists, firstLine for first-line-indent lists). firstLine and hanging are
+  // mutually exclusive, so at most one is set.
+  const markerBoxWidth = indent?.hanging ?? indent?.firstLine ?? 24; // Default 24px
 
   // min-width so short markers fill the space; long markers can extend
-  span.style.minWidth = `${hanging}px`;
+  span.style.minWidth = `${markerBoxWidth}px`;
   span.style.textAlign = 'left';
   span.style.boxSizing = 'border-box';
 

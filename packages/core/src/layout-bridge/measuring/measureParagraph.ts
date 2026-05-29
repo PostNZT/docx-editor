@@ -35,13 +35,16 @@ const DEFAULT_FONT_SIZE = 11; // 11pt (Word 2007+ default)
 const DEFAULT_FONT_FAMILY = 'Calibri';
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.0; // OOXML spec default: single spacing (line=240)
 
-// Tolerance for line breaking (2px).
-// Canvas text measurement can differ from the browser's actual text rendering
-// by 1-2px due to font metric differences, sub-pixel rounding, and font
-// substitution. A 2px tolerance prevents premature line breaks on tight lines
-// where the text barely fits the available width (common in legal documents
-// with large paragraph indents).
-const WIDTH_TOLERANCE = 2.0;
+// Tolerance for line breaking (sub-pixel).
+// Word wraps a line as soon as the text exceeds the available width; it measures
+// glyph advances slightly WIDER than the browser canvas (integer GDI rounding),
+// so the canvas width is a lower bound on Word's. Wrapping on true overflow
+// therefore matches Word (and never wraps earlier than Word). A larger tolerance
+// here caused the opposite WYSIWYG defect: tight indented lines (e.g. a signature
+// block where text overflows the narrow column by < 2px) stayed on one line in
+// the editor while Word wrapped them. We keep only a tiny epsilon to absorb
+// floating-point noise in width accumulation.
+const WIDTH_TOLERANCE = 0.25;
 
 /**
  * Compute the width a tab character should advance to reach the next tab stop.

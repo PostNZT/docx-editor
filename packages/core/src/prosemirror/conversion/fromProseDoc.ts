@@ -52,6 +52,20 @@ import type {
   TableCellAttrs,
 } from '../schema/nodes';
 import type { TextColorAttrs, UnderlineAttrs, FontFamilyAttrs } from '../schema/marks';
+import { extractPrimaryFontName } from '../../utils/fontResolver';
+
+/**
+ * Sanitize a stored font name to a single DOCX-valid family name.
+ *
+ * The font-family mark can end up holding a CSS-style stack (e.g.
+ * `"Arial", Helvetica, sans-serif`) when a font is applied via the picker or
+ * pasted HTML. Writing that verbatim into w:rFonts produces an invalid font
+ * name that Word cannot resolve, so we reduce it to its primary family here.
+ */
+function sanitizeFontName(name: string | null | undefined): string | undefined {
+  if (typeof name !== 'string' || name.trim() === '') return undefined;
+  return extractPrimaryFontName(name).trim();
+}
 
 /**
  * Convert a ProseMirror document to our Document type
@@ -1038,12 +1052,16 @@ function marksToTextFormatting(marks: readonly Mark[]): TextFormatting {
 
       case 'fontFamily': {
         const attrs = mark.attrs as FontFamilyAttrs;
+        // Reduce any CSS-style font stack to a single DOCX-valid family name so
+        // w:rFonts stays clean (e.g. `"Arial", Helvetica, sans-serif` -> `Arial`).
+        const ascii = sanitizeFontName(attrs.ascii);
+        const hAnsi = sanitizeFontName(attrs.hAnsi);
         formatting.fontFamily = {
-          ascii: attrs.ascii,
-          hAnsi: attrs.hAnsi,
-          eastAsia: attrs.eastAsia || undefined,
+          ascii,
+          hAnsi,
+          eastAsia: sanitizeFontName(attrs.eastAsia),
           // Use stored cs value, falling back to ascii for Complex Script compatibility
-          cs: attrs.cs || attrs.ascii || undefined,
+          cs: sanitizeFontName(attrs.cs) || ascii || undefined,
           // asciiTheme needs to be cast to the proper type or undefined
           asciiTheme: attrs.asciiTheme as
             | 'majorAscii'

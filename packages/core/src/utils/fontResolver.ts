@@ -147,6 +147,30 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     fallbackStack: ['Garamond', 'EB Garamond', 'Georgia', 'serif'],
     singleLineRatio: 1.068, // 1068/1000
   },
+
+  // Legal / court fonts. Century Schoolbook is the U.S. Supreme Court and
+  // appellate-brief standard; Bookman Old Style is common in legal practice.
+  // Neither has a metric-compatible Google clone, so we fall back to Noto Serif
+  // for users without the font installed (most legal users have the real font
+  // via MS Office, in which case it renders directly).
+  //
+  // singleLineRatio is left at the neutral default on purpose: the open URW
+  // clones (C059, URW Bookman) report inflated usWin metrics (~1.42 / ~1.32)
+  // that do NOT match Microsoft's real fonts, and we have no authoritative OS/2
+  // source for the proprietary versions. The default avoids asserting a wrong
+  // line height; refine later from the real font's (usWinAscent+usWinDescent)/upm.
+  'century schoolbook': {
+    googleFont: 'Noto Serif',
+    category: 'serif',
+    fallbackStack: ['Century Schoolbook', 'Noto Serif', 'Georgia', 'serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
+  'bookman old style': {
+    googleFont: 'Noto Serif',
+    category: 'serif',
+    fallbackStack: ['Bookman Old Style', 'Noto Serif', 'Palatino Linotype', 'Georgia', 'serif'],
+    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+  },
   'century gothic': {
     googleFont: 'Questrial',
     category: 'sans-serif',
@@ -285,7 +309,7 @@ const GENERIC_FAMILIES = new Set([
  * the resolver treats the whole string as one unknown font name and the
  * rendered CSS is broken.
  */
-function extractPrimaryFontName(input: string): string {
+export function extractPrimaryFontName(input: string): string {
   if (!input.includes(',') && !input.includes('"') && !input.includes("'")) {
     return input;
   }
