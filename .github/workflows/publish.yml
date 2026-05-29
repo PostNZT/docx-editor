@@ -1,8 +1,11 @@
-name: Publish to npm
+name: Publish to npm (manual)
 
+# Automatic publishing happens in ci.yml on push to main (it derives the
+# semantic version from Conventional Commits, publishes, tags, and creates the
+# GitHub Release). This workflow is a MANUAL fallback only — e.g. to re-publish
+# or to dry-run. The `release: published` trigger was removed so it does not
+# double-publish (and fail) on releases created by ci.yml.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       dry-run:
