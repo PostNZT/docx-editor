@@ -64,6 +64,16 @@ export const NAMESPACES = {
   pr: 'http://schemas.openxmlformats.org/package/2006/relationships',
 } as const;
 
+// Matches a literal `&` that isn't the start of a valid XML entity reference
+// (named, decimal, or hex). Real-world DOCX files produced by non-Word tools
+// occasionally leave stray ampersands unescaped; xml-js's sax parser is strict
+// and rejects the whole document with "Invalid character in entity name".
+const STRAY_AMPERSAND_RE = /&(?!(?:[A-Za-z][A-Za-z0-9]*|#[0-9]+|#x[0-9a-fA-F]+);)/g;
+
+function escapeStrayAmpersands(xml: string): string {
+  return xml.replace(STRAY_AMPERSAND_RE, '&amp;');
+}
+
 /**
  * Parse XML string into element tree
  *
@@ -71,24 +81,42 @@ export const NAMESPACES = {
  * @returns Parsed element tree
  */
 export function parseXml(xml: string): XmlElement {
-  const result = xml2js(xml, {
-    compact: false,
-    ignoreComment: true,
-    ignoreInstruction: true,
-    ignoreDoctype: true,
-    alwaysArray: false,
-    // IMPORTANT: Do NOT trim whitespace - it strips significant spaces
-    // around hyperlinks and other inline elements. DOCX uses xml:space="preserve"
-    // to indicate significant whitespace, but we need to preserve all text as-is.
-    trim: false,
-    // IMPORTANT: Without this, xml-js silently drops whitespace-only text nodes
-    // (e.g. <w:t xml:space="preserve"> </w:t> loses the space).
-    captureSpacesBetweenElements: true,
-    attributesKey: 'attributes',
-    textKey: 'text',
-  }) as XmlElement;
+  const sanitized = escapeStrayAmpersands(xml);
 
-  return result;
+  try {
+    return xml2js(sanitized, {
+      compact: false,
+      ignoreComment: true,
+      ignoreInstruction: true,
+      ignoreDoctype: true,
+      alwaysArray: false,
+      // IMPORTANT: Do NOT trim whitespace - it strips significant spaces
+      // around hyperlinks and other inline elements. DOCX uses xml:space="preserve"
+      // to indicate significant whitespace, but we need to preserve all text as-is.
+      trim: false,
+      // IMPORTANT: Without this, xml-js silently drops whitespace-only text nodes
+      // (e.g. <w:t xml:space="preserve"> </w:t> loses the space).
+      captureSpacesBetweenElements: true,
+      attributesKey: 'attributes',
+      textKey: 'text',
+    }) as XmlElement;
+  } catch (error) {
+    if (!(error instanceof Error)) throw error;
+
+    // xml-js error messages include "Line: N\nColumn: M\nChar: c" but no
+    // surrounding context. Append a short snippet of the input around the
+    // offending column so the next reader can see what byte broke the parse.
+    const colMatch = error.message.match(/Column:\s*(\d+)/);
+    if (colMatch) {
+      const col = parseInt(colMatch[1], 10);
+      const start = Math.max(0, col - 30);
+      const snippet = JSON.stringify(sanitized.slice(start, col + 30));
+      const wrapped = new Error(`${error.message}\nNear: ${snippet}`);
+      wrapped.stack = error.stack;
+      throw wrapped;
+    }
+    throw error;
+  }
 }
 
 /**
