@@ -142,6 +142,14 @@ function extractRunFormatting(marks: readonly Mark[], theme?: Theme | null): Run
         formatting.strike = true;
         break;
 
+      case 'allCaps':
+        formatting.allCaps = true;
+        break;
+
+      case 'smallCaps':
+        formatting.smallCaps = true;
+        break;
+
       case 'textColor': {
         const attrs = mark.attrs as TextColorAttrs;
         if (attrs.themeColor || attrs.rgb) {
@@ -247,7 +255,10 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       const formatting = extractRunFormatting(child.marks, theme);
       const run: TextRun = {
         kind: 'text',
-        text: child.text,
+        // w:caps is a display transform; uppercase the flow text so Canvas
+        // measurement, line wrapping, and painting all agree. The hidden
+        // ProseMirror keeps the original text for editing/selection/save.
+        text: formatting.allCaps ? child.text.toUpperCase() : child.text,
         ...formatting,
         pmStart: childPos,
         pmEnd: childPos + child.nodeSize,
@@ -343,7 +354,7 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
           const formatting = extractRunFormatting(sdtChild.marks, theme);
           const run: TextRun = {
             kind: 'text',
-            text: sdtChild.text,
+            text: formatting.allCaps ? sdtChild.text.toUpperCase() : sdtChild.text,
             ...formatting,
             pmStart: sdtChildPos,
             pmEnd: sdtChildPos + sdtChild.nodeSize,

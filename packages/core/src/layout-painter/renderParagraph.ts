@@ -159,6 +159,12 @@ function applyRunStyles(
   if (run.italic) {
     element.style.fontStyle = 'italic';
   }
+  // w:caps is handled upstream by uppercasing the flow run's text (so Canvas
+  // measurement matches). w:smallCaps renders lowercase letters as small
+  // capitals — a pure display transform via CSS.
+  if (run.smallCaps) {
+    element.style.fontVariant = 'small-caps';
+  }
 
   // Color
   if (run.color) {
