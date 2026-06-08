@@ -497,6 +497,15 @@ export function serializeTableRowFormatting(
   const parts: string[] = [];
 
   if (formatting) {
+    // Conditional format style (w:cnfStyle) — first child of CT_TrPr. Carries
+    // table-style row context (header row, banding) that Word resolves from
+    // the table style; dropping it degrades styled tables on round-trip. The
+    // cell path already emits this; the row path previously did not.
+    const cnfStyleXml = serializeConditionalFormatStyle(formatting.conditionalFormat);
+    if (cnfStyleXml) {
+      parts.push(cnfStyleXml);
+    }
+
     // Can't split
     if (formatting.cantSplit) {
       parts.push('<w:cantSplit/>');
