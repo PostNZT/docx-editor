@@ -291,10 +291,15 @@ export function resolveColor(
       hexColor = color.rgb ?? defaultColor;
     }
 
-    // Apply tint/shade modifiers
+    // Apply tint/shade modifiers. Per ECMA-376, w:themeTint/w:themeShade are
+    // ST_UcharHexNumber "keep" fractions: the byte/255 is how much of the base
+    // color survives (0xFF = unchanged). applyShade already takes a keep value
+    // (c * shade). applyTint takes a "toward white" amount, so the tint byte
+    // must be inverted: keep=0x33 (Lighter 80%) → 0.8 toward white. Verified
+    // against Word's cached value: accent1 #4472C4 + themeTint="66" → #B4C6E7.
     if (color.themeTint) {
-      const tintValue = parseModifierValue(color.themeTint);
-      hexColor = applyTint(hexColor, tintValue);
+      const tintKeep = parseModifierValue(color.themeTint);
+      hexColor = applyTint(hexColor, 1 - tintKeep);
     } else if (color.themeShade) {
       const shadeValue = parseModifierValue(color.themeShade);
       hexColor = applyShade(hexColor, shadeValue);
@@ -637,10 +642,14 @@ const THEME_MATRIX_ROWS: Array<{
   hexValue: string; // OOXML hex modifier
   labelSuffix: string;
 }> = [
+  // hexValue is the OOXML w:themeTint/w:themeShade byte (a "keep" fraction:
+  // byte/255 = how much of the base color survives). Lighter 80% keeps 20%
+  // → 0x33; Darker 25% keeps 75% → 0xBF. `value` is the internal "toward
+  // white/black" amount used only to render the swatch via applyTint/applyShade.
   { type: 'base', value: 0, hexValue: '', labelSuffix: '' },
-  { type: 'tint', value: 0.8, hexValue: 'CC', labelSuffix: ', Lighter 80%' },
-  { type: 'tint', value: 0.6, hexValue: '99', labelSuffix: ', Lighter 60%' },
-  { type: 'tint', value: 0.4, hexValue: '66', labelSuffix: ', Lighter 40%' },
+  { type: 'tint', value: 0.8, hexValue: '33', labelSuffix: ', Lighter 80%' },
+  { type: 'tint', value: 0.6, hexValue: '66', labelSuffix: ', Lighter 60%' },
+  { type: 'tint', value: 0.4, hexValue: '99', labelSuffix: ', Lighter 40%' },
   { type: 'shade', value: 0.75, hexValue: 'BF', labelSuffix: ', Darker 25%' },
   { type: 'shade', value: 0.5, hexValue: '80', labelSuffix: ', Darker 50%' },
 ];

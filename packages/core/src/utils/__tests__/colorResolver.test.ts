@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { generateThemeTintShadeMatrix, getThemeTintShadeHex } from '../colorResolver';
+import { generateThemeTintShadeMatrix, getThemeTintShadeHex, resolveColor } from '../colorResolver';
 import type { ThemeColorScheme } from '../../types/document';
 
 const OFFICE_2016_DEFAULTS: ThemeColorScheme = {
@@ -48,9 +48,11 @@ describe('generateThemeTintShadeMatrix', () => {
 
   test('tint rows (1-3) have tint values', () => {
     const matrix = generateThemeTintShadeMatrix(OFFICE_2016_DEFAULTS);
-    expect(matrix[1][4].tint).toBe('CC'); // 80% tint
-    expect(matrix[2][4].tint).toBe('99'); // 60% tint
-    expect(matrix[3][4].tint).toBe('66'); // 40% tint
+    // w:themeTint is a "keep" byte (byte/255 = fraction of base kept), so
+    // Lighter 80% keeps 20% → 0x33, Lighter 60% → 0x66, Lighter 40% → 0x99.
+    expect(matrix[1][4].tint).toBe('33'); // Lighter 80%
+    expect(matrix[2][4].tint).toBe('66'); // Lighter 60%
+    expect(matrix[3][4].tint).toBe('99'); // Lighter 40%
     // No shade on tint rows
     expect(matrix[1][4].shade).toBeUndefined();
   });
@@ -146,5 +148,32 @@ describe('getThemeTintShadeHex', () => {
   test('shade of 0 returns black', () => {
     const result = getThemeTintShadeHex('FF0000', 'shade', 0);
     expect(result).toBe('000000');
+  });
+});
+
+// w:themeTint / w:themeShade are ST_UcharHexNumber "keep" fractions (byte/255 =
+// how much of the base color survives; 0xFF = unchanged). resolveColor must
+// lighten/darken accordingly. accent1 defaults to #4472C4.
+describe('resolveColor theme tint/shade (OOXML keep semantics)', () => {
+  test('themeTint="66" on accent1 lightens toward white (Word caches #B4C6E7)', () => {
+    // keep 0x66/255 = 0.4 → 60% toward white. Per-channel rounding yields
+    // #B4C7E7, matching Word's cached #B4C6E7 within 1/255. The OLD inverted
+    // code produced the far-too-dark #8FAADC.
+    const result = resolveColor({ themeColor: 'accent1', themeTint: '66' }, null);
+    expect(result).toBe('#B4C7E7');
+  });
+
+  test('themeTint="33" on accent1 is Lighter 80% (near white)', () => {
+    // keep 0x33/255 ≈ 0.2 → 80% toward white ≈ Office "Lighter 80%" #DAE3F3.
+    expect(resolveColor({ themeColor: 'accent1', themeTint: '33' }, null)).toBe('#DAE3F3');
+  });
+
+  test('themeTint="FF" (keep all) leaves the base unchanged', () => {
+    expect(resolveColor({ themeColor: 'accent1', themeTint: 'FF' }, null)).toBe('#4472C4');
+  });
+
+  test('themeShade="BF" on accent1 darkens (keep 75%)', () => {
+    // keep 0xBF/255 ≈ 0.749 → each channel * 0.749.
+    expect(resolveColor({ themeColor: 'accent1', themeShade: 'BF' }, null)).toBe('#335593');
   });
 });

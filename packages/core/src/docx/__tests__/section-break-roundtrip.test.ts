@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { parseDocumentBody } from '../documentParser';
-import { serializeDocumentBody } from '../serializer/documentSerializer';
+import {
+  serializeDocumentBody,
+  serializeSectionProperties,
+} from '../serializer/documentSerializer';
 import type { Paragraph } from '../../types/document';
 
 // Issue #680 (ported from upstream eigenpal/docx-editor): a mid-body section
@@ -74,5 +77,23 @@ describe('mid-body section break roundtrip (issue #680)', () => {
     expect(firstPara.sectionProperties?.pageHeight).toBe(15840);
     expect(reparsed.finalSectionProperties?.pageWidth).toBe(15840);
     expect(reparsed.finalSectionProperties?.orientation).toBe('landscape');
+  });
+
+  // EG_SectPrContents (CT_SectPr) order is cols, vAlign, titlePg, bidi, docGrid.
+  // Strict OOXML validators reject a sectPr that emits docGrid early or bidi
+  // before titlePg, even though Word tolerates it.
+  test('sectPr children serialize in CT_SectPr schema order', () => {
+    const xml = serializeSectionProperties({
+      columnCount: 2,
+      verticalAlign: 'center',
+      titlePg: true,
+      bidi: true,
+      docGrid: { type: 'lines', linePitch: 360 },
+    });
+    expect(xml).toMatch(
+      /<w:cols\b.*<w:vAlign\b[^>]*\/>.*<w:titlePg\/>.*<w:bidi\/>.*<w:docGrid\b[^>]*\/>/s
+    );
+    // docGrid must not precede vAlign / titlePg / bidi.
+    expect(xml).not.toMatch(/<w:docGrid[^>]*\/>.*<w:(vAlign|titlePg|bidi)/s);
   });
 });
