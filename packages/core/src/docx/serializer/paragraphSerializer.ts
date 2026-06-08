@@ -32,9 +32,14 @@ import type {
   BorderSpec,
   ShadingProperties,
   TextFormatting,
+  SectionProperties,
 } from '../../types/document';
 
 import { serializeRun, serializeTextFormatting } from './runSerializer';
+// serializeSectionProperties is a hoisted function declaration; this import
+// participates in a benign documentSerializer <-> paragraphSerializer cycle
+// (both sides are only invoked at runtime, never at module-eval time).
+import { serializeSectionProperties } from './documentSerializer';
 
 import { escapeXml } from './xmlUtils';
 
@@ -367,7 +372,8 @@ function serializeFrameProperties(frame: ParagraphFormatting['frame']): string {
  */
 export function serializeParagraphFormatting(
   formatting: ParagraphFormatting | undefined,
-  propertyChanges?: ParagraphPropertyChange[]
+  propertyChanges?: ParagraphPropertyChange[],
+  options?: { sectionProperties?: SectionProperties }
 ): string {
   const parts: string[] = [];
 
@@ -490,6 +496,17 @@ export function serializeParagraphFormatting(
       if (rPrXml) {
         parts.push(rPrXml);
       }
+    }
+  }
+
+  // Section properties (mid-body section break carried on `w:pPr/w:sectPr`).
+  // CT_PPr ordering puts `<w:sectPr>` after the paragraph-mark `<w:rPr>` and
+  // before `<w:pPrChange>`. Emitted outside the `formatting` guard so a
+  // section break on an otherwise-unformatted paragraph still round-trips.
+  if (options?.sectionProperties) {
+    const sectPrXml = serializeSectionProperties(options.sectionProperties);
+    if (sectPrXml) {
+      parts.push(sectPrXml);
     }
   }
 
@@ -882,7 +899,11 @@ export function serializeParagraph(paragraph: Paragraph): string {
   const attrsStr = attrs.length > 0 ? ' ' + attrs.join(' ') : '';
 
   // Add paragraph properties if present
-  const pPrXml = serializeParagraphFormatting(paragraph.formatting, paragraph.propertyChanges);
+  const pPrXml = serializeParagraphFormatting(
+    paragraph.formatting,
+    paragraph.propertyChanges,
+    paragraph.sectionProperties ? { sectionProperties: paragraph.sectionProperties } : undefined
+  );
   if (pPrXml) {
     parts.push(pPrXml);
   }
