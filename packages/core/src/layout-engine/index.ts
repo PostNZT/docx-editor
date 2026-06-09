@@ -34,6 +34,27 @@ import {
   hasPageBreakBefore,
 } from './keep-together';
 
+/**
+ * A block carries no visible content when it is a paragraph with no text,
+ * image, or value-bearing field — i.e. an empty / spacer paragraph (or one
+ * holding only tabs or line breaks). Non-paragraph blocks (tables, images) are
+ * always considered visible. Used to drop a spurious trailing blank page.
+ */
+function blockHasVisibleContent(block: FlowBlock): boolean {
+  if (block.kind !== 'paragraph') return true;
+  for (const run of (block as ParagraphBlock).runs ?? []) {
+    if (run.kind === 'text' && run.text.trim().length > 0) return true;
+    if (run.kind === 'image') return true;
+    if (run.kind === 'field') {
+      // PAGE/NUMPAGES resolve to a number at paint time; OTHER/DATE/TIME paint
+      // their fallback (empty fallback => nothing, matching the painter).
+      if (run.fieldType === 'PAGE' || run.fieldType === 'NUMPAGES') return true;
+      if ((run.fallback ?? '').trim().length > 0) return true;
+    }
+  }
+  return false;
+}
+
 // Default page size (US Letter in pixels at 96 DPI)
 const DEFAULT_PAGE_SIZE = { w: 816, h: 1056 };
 
@@ -266,6 +287,21 @@ export function layoutDocument(
   // Ensure at least one page exists
   if (paginator.pages.length === 0) {
     paginator.getCurrentState();
+  }
+
+  // Drop spurious trailing blank page(s): tall line spacing or trailing
+  // empty/spacer paragraphs can spill onto a fresh page that paints nothing,
+  // which Word/Google never show. Only pages whose every fragment is an
+  // invisible (empty) paragraph are removed; never drop the final page.
+  const blockById = new Map(blocks.map((b) => [String(b.id), b]));
+  while (paginator.pages.length > 1) {
+    const last = paginator.pages[paginator.pages.length - 1];
+    const hasVisible = last.fragments.some((f) => {
+      const blk = f.blockId != null ? blockById.get(String(f.blockId)) : undefined;
+      return blk ? blockHasVisibleContent(blk) : true;
+    });
+    if (hasVisible) break;
+    paginator.pages.pop();
   }
 
   return {
