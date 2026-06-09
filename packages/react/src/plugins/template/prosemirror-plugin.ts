@@ -82,16 +82,19 @@ interface TemplatePluginState {
 }
 
 /**
- * Regex to match template tags in three syntaxes:
- *   jinja:        {{ name }}  or  {{name}}            (always a plain variable)
- *   docxtemplater: {name}, {#name}, {/name}, {^name}, {@name}
- *   bracket:      [[name]]                             (always a plain variable)
+ * Regex to match template tags. Only DOUBLE enclosures are recognized, so a
+ * stray single brace in ordinary text (e.g. "{note}") is never turned into a
+ * variable pill. Both double syntaxes are supported equally:
+ *   curly:   {{ name }} / {{name}}                          plain variable
+ *            {{#name}} {{/name}} {{^name}} {{@name}}         section / inverted / raw
+ *   bracket: [[ name ]] / [[name]]                          plain variable
  *
- * Jinja must come first in the alternation — `{{name}}` would otherwise
- * match the docxtemplater branch twice as two adjacent `{name}` tokens.
+ * Single-brace docxtemplater syntax ({name}, {#name}, …) is intentionally NOT
+ * matched — templates must use {{ }} or [[ ]]. Whitespace inside the braces is
+ * optional in both forms.
  */
 const TAG_REGEX =
-  /\{\{\s*(?<jinjaName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}|\{(?<prefix>[#/^@]?)(?<braceName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\}|\[\[(?<bracketName>[a-zA-Z_][a-zA-Z0-9_]*)\]\]/g;
+  /\{\{\s*(?<prefix>[#/^@]?)\s*(?<curlyName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\}\}|\[\[\s*(?<bracketName>[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s*\]\]/g;
 
 /**
  * Plugin key
@@ -108,9 +111,11 @@ function stableId(type: TagType, name: string, occurrence: number): string {
 }
 
 /**
- * Find all template tags in the document
+ * Find all template tags in the document.
+ *
+ * Exported for unit testing of the detection rules.
  */
-function findTags(doc: ProseMirrorNode): TemplateTag[] {
+export function findTags(doc: ProseMirrorNode): TemplateTag[] {
   // Collect all text with positions
   const parts: { text: string; pos: number }[] = [];
   doc.descendants((node, pos) => {
@@ -139,15 +144,17 @@ function findTags(doc: ProseMirrorNode): TemplateTag[] {
   TAG_REGEX.lastIndex = 0;
   while ((match = TAG_REGEX.exec(combined)) !== null) {
     const rawTag = match[0];
-    const jinjaName = match.groups?.jinjaName;
+    const curlyName = match.groups?.curlyName;
     const bracketName = match.groups?.bracketName;
     const prefix = match.groups?.prefix ?? '';
-    const name = jinjaName ?? bracketName ?? match.groups?.braceName ?? '';
+    const name = curlyName ?? bracketName ?? '';
     const from = posMap[match.index];
     const to = posMap[match.index + rawTag.length - 1] + 1;
 
+    // [[ ]] is always a plain variable. {{ }} carries an optional prefix that
+    // selects the section / inverted / raw kinds; no prefix => plain variable.
     let type: TagType;
-    if (jinjaName || bracketName) type = 'variable';
+    if (bracketName) type = 'variable';
     else if (prefix === '#') type = 'sectionStart';
     else if (prefix === '/') type = 'sectionEnd';
     else if (prefix === '^') type = 'invertedStart';
@@ -365,8 +372,8 @@ export function setSelectedElement(view: EditorView, id: string | undefined): vo
 
 /**
  * CSS styles for template decorations — purple 3D button look,
- * applied to inline `{{var}}` / `[[var]]` / `{var}` tokens so the
- * literal placeholder text reads as a clickable pill.
+ * applied to inline `{{var}}` / `[[var]]` tokens so the literal
+ * placeholder text reads as a clickable pill.
  */
 export const TEMPLATE_DECORATION_STYLES = `
 .docx-template-tag {
