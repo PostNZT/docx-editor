@@ -626,8 +626,16 @@ export function measureParagraph(
     }
 
     if (isFieldRun(run)) {
-      // Measure field using fallback text (actual value substituted at render time)
-      const fallback = run.fallback || '1';
+      // Measure field using fallback text (actual value substituted at render time).
+      //
+      // OTHER fields render their fallback verbatim in the painter, so when the
+      // fallback is empty (e.g. a hidden `SEQ … \h` field that produces no text)
+      // the painter draws nothing. Reserving a phantom '1' here would over-measure
+      // the line by ~8px and can wrap the following text one word too early
+      // (e.g. a case-number caption "Case No. …-MAM" pushed past the right edge).
+      // Only PAGE/NUMPAGES/DATE/TIME resolve to a real value at paint time and so
+      // warrant a single-character placeholder when no fallback is present.
+      const fallback = run.fallback || (run.fieldType === 'OTHER' ? '' : '1');
       const style: FontStyle = {
         fontFamily: run.fontFamily ?? DEFAULT_FONT_FAMILY,
         fontSize: run.fontSize ?? DEFAULT_FONT_SIZE,
