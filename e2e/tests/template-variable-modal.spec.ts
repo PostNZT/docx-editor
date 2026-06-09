@@ -9,10 +9,10 @@
  * `data-testid="template-variable-modal"` — so we assert by reading the
  * modal's text content.
  *
- * Three placeholder syntaxes are covered:
- *   - jinja:        {{ name }}    (allows whitespace inside braces)
- *   - bracket:      [[name]]      (no whitespace inside)
- *   - docxtemplater: {name}       (no whitespace inside)
+ * Only DOUBLE-enclosed placeholders are recognized:
+ *   - curly:   {{ name }}   (whitespace optional)
+ *   - bracket: [[name]]     (whitespace optional)
+ * Single-brace {name} is intentionally NOT treated as a variable.
  *
  * Plus: sidebar chip click fires the same callback as overlay rect click,
  * and the flag-off case (App.tsx ?flagOff=1) confirms the modal is gated
@@ -72,17 +72,14 @@ test.describe('Template variable modal — onVariableClick', () => {
     await expect(modal(page).getByText('[[test_var]]')).toBeVisible();
   });
 
-  test('overlay click fires callback for {brace} syntax', async ({ page }) => {
+  test('single-brace {brace} is NOT treated as a variable', async ({ page }) => {
     await editor.typeText('{another_var}');
 
-    const overlay = page.locator('.template-highlight[data-var-name="another_var"]').first();
-    await overlay.waitFor({ state: 'visible', timeout: 5000 });
-
-    await overlay.click();
-
-    await expect(modal(page)).toBeVisible();
-    await expect(modal(page).locator('h2', { hasText: 'another_var' })).toBeVisible();
-    await expect(modal(page).getByText('{another_var}')).toBeVisible();
+    // No template overlay should be created for single-brace text, and a click
+    // on it must not open the modal — it is ordinary literal text now.
+    const overlay = page.locator('.template-highlight[data-var-name="another_var"]');
+    await expect(overlay).toHaveCount(0);
+    await expect(modal(page)).toHaveCount(0);
   });
 
   test('sidebar chip click fires the same callback as overlay click', async ({ page }) => {
