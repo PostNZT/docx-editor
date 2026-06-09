@@ -41,27 +41,51 @@ export function TemplateHighlightOverlay({
   // Version counter bumped by resize/layout changes to trigger recompute
   const [layoutVersion, setLayoutVersion] = useState(0);
 
-  // Compute highlight rectangles synchronously during render (no blank frames)
+  // Compute highlight rectangles synchronously during render (no blank frames).
+  // Measure every tag in a SINGLE span scan (getRectsForRanges) instead of one
+  // full-document scan per tag — the per-tag scan was the dominant cost of the
+  // post-paint recompute and made pills lag/stagger behind the painted text on
+  // large templates. Falls back to per-range when the batched API is absent.
   const computeHighlights = useCallback((): HighlightRect[] => {
     const containerOffset = context.getContainerOffset();
     const rects: HighlightRect[] = [];
 
-    for (const tag of tags) {
-      const tagRects = context.getRectsForRange(tag.from, tag.to);
-      tagRects.forEach((rect, rectIndex) => {
-        rects.push({
-          tagId: tag.id,
-          tagType: tag.type,
-          varName: tag.name,
-          label: tag.name,
-          isFirstRect: rectIndex === 0,
-          x: rect.x + containerOffset.x,
-          y: rect.y + containerOffset.y,
-          width: rect.width,
-          height: rect.height,
-        });
+    const ranges = tags.map((t) => ({ from: t.from, to: t.to }));
+    const perTagRects = context.getRectsForRanges
+      ? context.getRectsForRanges(ranges)
+      : ranges.map((r) => context.getRectsForRange(r.from, r.to));
+
+    tags.forEach((tag, tagIndex) => {
+      const tagRects = perTagRects[tagIndex] ?? [];
+      if (tagRects.length === 0) return;
+
+      // ONE pill per tag. A tag whose text wraps across lines (e.g. a long name
+      // in a narrow table cell) yields one rect per line; rendering each as its
+      // own pill produced duplicate stacked buttons. Merge them into a single
+      // bounding box that covers every line the tag occupies.
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const rect of tagRects) {
+        left = Math.min(left, rect.x);
+        top = Math.min(top, rect.y);
+        right = Math.max(right, rect.x + rect.width);
+        bottom = Math.max(bottom, rect.y + rect.height);
+      }
+
+      rects.push({
+        tagId: tag.id,
+        tagType: tag.type,
+        varName: tag.name,
+        label: tag.name,
+        isFirstRect: true,
+        x: left + containerOffset.x,
+        y: top + containerOffset.y,
+        width: right - left,
+        height: bottom - top,
       });
-    }
+    });
 
     return rects;
   }, [context, tags]);
@@ -115,8 +139,14 @@ export function TemplateHighlightOverlay({
             data-var-name={rect.varName}
             style={{
               left: rect.x,
+              // minWidth (not width) guarantees the pill fully covers the
+              // underlying [[…]] text (no raw-text bleed-through) while CSS
+              // `width: max-content` lets it grow to fit the variable name when
+              // the text is narrower than the label — e.g. a long name wrapped
+              // inside a narrow table cell, which would otherwise clip to an
+              // unreadable "vments_made_amou…".
+              minWidth: rect.width,
               top: rect.y,
-              width: rect.width,
               height: rect.height,
             }}
             onMouseEnter={() => onHover?.(rect.tagId)}
@@ -127,7 +157,10 @@ export function TemplateHighlightOverlay({
               onSelect?.(rect.tagId);
             }}
           >
-            {rect.isFirstRect ? rect.label : ''}
+            {/* One pill per tag (rects are merged in computeHighlights), so the
+                label always renders once. CSS grows the pill to fit the name
+                (width: max-content) and ellipsis-clips only past the cap. */}
+            {rect.label}
           </div>
         );
       })}
@@ -154,6 +187,12 @@ export const TEMPLATE_HIGHLIGHT_OVERLAY_STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  /* Grow to fit the label, but never narrower than the inline minWidth set above
+     (which covers the underlying text). Capped so an unusually long name can't
+     run off the page; only then does the ellipsis below apply. */
+  width: max-content;
+  max-width: 240px;
   padding: 0 4px;
   background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%) !important;
   color: #ffffff !important;

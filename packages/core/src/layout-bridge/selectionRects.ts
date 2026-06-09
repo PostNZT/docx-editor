@@ -45,6 +45,13 @@ export type SelectionRect = {
   width: number;
   /** Height of the rectangle (typically line height). */
   height: number;
+  /**
+   * Tight glyph-box height for this line (ascent + descent, no leading), when
+   * known. Selection highlights use `height` (full line) to fill the line;
+   * overlays that want to hug the text (e.g. template pills) can use this
+   * instead, centered within `height`. Undefined for non-line rects.
+   */
+  glyphHeight?: number;
   /** Page index (0-based). */
   pageIndex: number;
 };
@@ -386,6 +393,7 @@ export function selectionToRects(
             y: rectY + pageTopY,
             width: rectWidth,
             height: line.lineHeight,
+            glyphHeight: line.ascent + line.descent,
             pageIndex,
           });
         }
@@ -476,6 +484,7 @@ export function selectionToRects(
                   y: tableFragment.y + rowY + blockY + lineY + pageTopY,
                   width: Math.max(1, Math.abs(endX - startX)),
                   height: line.lineHeight,
+                  glyphHeight: line.ascent + line.descent,
                   pageIndex,
                 });
               }

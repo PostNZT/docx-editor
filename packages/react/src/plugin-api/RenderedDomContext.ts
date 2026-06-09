@@ -7,6 +7,21 @@
  */
 
 import type { RenderedDomContext, PositionCoordinates } from './types';
+import { selectionToRects } from '@postnzt/docx-core/layout-bridge/selectionRects';
+import { getPageTop } from '@postnzt/docx-core/layout-bridge/hitTest';
+import type { Layout, FlowBlock, Measure } from '@postnzt/docx-core/layout-engine/types';
+
+/**
+ * Optional layout data. When supplied, range→rect mapping is computed from the
+ * layout engine — reliable and available the instant layout completes, exactly
+ * like the caret/selection overlay — instead of scanning the painted DOM per
+ * range. The DOM path is kept as a fallback when this is absent.
+ */
+export interface RenderedDomLayoutData {
+  layout: Layout;
+  blocks: FlowBlock[];
+  measures: Measure[];
+}
 
 /**
  * Implementation of RenderedDomContext.
@@ -19,10 +34,75 @@ import type { RenderedDomContext, PositionCoordinates } from './types';
 export class RenderedDomContextImpl implements RenderedDomContext {
   public pagesContainer: HTMLElement;
   public zoom: number;
+  private layout?: Layout;
+  private blocks?: FlowBlock[];
+  private measures?: Measure[];
 
-  constructor(pagesContainer: HTMLElement, zoom: number = 1) {
+  constructor(pagesContainer: HTMLElement, zoom: number = 1, layoutData?: RenderedDomLayoutData) {
     this.pagesContainer = pagesContainer;
     this.zoom = zoom;
+    this.layout = layoutData?.layout;
+    this.blocks = layoutData?.blocks;
+    this.measures = layoutData?.measures;
+  }
+
+  /**
+   * Range→rect mapping computed from the layout engine (no per-range DOM scan,
+   * no dependence on a post-paint React tick).
+   *
+   * Each rect is anchored to its OWN page's real rendered position rather than
+   * assuming the layout engine's pageGap matches the painted page stacking.
+   * selectionToRects returns y in full-document layout space (the page top is
+   * baked in) plus the 0-based pageIndex; we subtract the layout page top to get
+   * a page-local offset, then add the MEASURED DOM top/left of that specific
+   * page. This removes cross-page drift (pills landing a line too high on later
+   * pages, where any pageGap/margin mismatch accumulated) and needs no pageGap
+   * assumption — the subtract/add cancels the model's own page top exactly.
+   *
+   * Vertically the rect hugs the glyph box (ascent+descent). The painter renders
+   * each line as a block of height=lineHeight with line-height=lineHeight, so the
+   * browser centers the glyph box within the line box. selectionToRects' y is the
+   * line-box TOP, so the painted text sits a half-leading lower — we add that
+   * half-leading so the pill lands ON the text rather than floating above it in
+   * spaced (1.5×/double) paragraphs.
+   */
+  private layoutRectsForRanges(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
+    const { layout, blocks, measures } = this;
+    if (!layout || !blocks || !measures) return ranges.map(() => []);
+
+    const containerRect = this.pagesContainer.getBoundingClientRect();
+    const pageOrigins = Array.from(this.pagesContainer.querySelectorAll('.layout-page')).map(
+      (el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          left: (r.left - containerRect.left) / this.zoom,
+          top: (r.top - containerRect.top) / this.zoom,
+        };
+      }
+    );
+    const fallbackOrigin = pageOrigins[0] ?? { left: 0, top: 0 };
+
+    return ranges.map(({ from, to }) => {
+      if (from === to) return [];
+      return selectionToRects(layout, blocks, measures, from, to).map((r) => {
+        const origin = pageOrigins[r.pageIndex] ?? fallbackOrigin;
+        const pageLocalY = r.y - getPageTop(layout, r.pageIndex);
+        const tightHeight = r.glyphHeight ?? r.height;
+        const halfLeading = Math.max(0, (r.height - tightHeight) / 2);
+        return {
+          x: origin.left + r.x,
+          y: origin.top + pageLocalY + halfLeading,
+          width: r.width,
+          height: tightHeight,
+        };
+      });
+    });
+  }
+
+  private hasLayoutData(): boolean {
+    return Boolean(this.layout && this.blocks && this.measures);
   }
 
   /**
@@ -135,6 +215,9 @@ export class RenderedDomContextImpl implements RenderedDomContext {
     from: number,
     to: number
   ): Array<{ x: number; y: number; width: number; height: number }> {
+    if (this.hasLayoutData()) {
+      return this.layoutRectsForRanges([{ from, to }])[0] ?? [];
+    }
     const containerRect = this.pagesContainer.getBoundingClientRect();
     const rects: Array<{ x: number; y: number; width: number; height: number }> = [];
 
@@ -192,6 +275,79 @@ export class RenderedDomContextImpl implements RenderedDomContext {
   }
 
   /**
+   * Batched {@link getRectsForRange}. Scans the rendered spans ONCE and returns
+   * one rect array per input range (index-aligned with `ranges`). Equivalent to
+   * calling getRectsForRange for each range, but avoids re-querying the whole
+   * span set per range — the dominant cost when positioning every template tag
+   * on a large document. The per-span logic (tab full-width, non-text-child
+   * skip, character slicing, zoom, container-relative coords) is identical.
+   */
+  getRectsForRanges(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
+    if (this.hasLayoutData()) {
+      return this.layoutRectsForRanges(ranges);
+    }
+    const result = ranges.map(
+      () => [] as Array<{ x: number; y: number; width: number; height: number }>
+    );
+    if (ranges.length === 0) return result;
+
+    const containerRect = this.pagesContainer.getBoundingClientRect();
+    const spans = this.pagesContainer.querySelectorAll('span[data-pm-start][data-pm-end]');
+
+    for (const span of Array.from(spans)) {
+      const spanEl = span as HTMLElement;
+      const pmStart = Number(spanEl.dataset.pmStart);
+      const pmEnd = Number(spanEl.dataset.pmEnd);
+      const isTab = spanEl.classList.contains('layout-run-tab');
+      const textNode =
+        !isTab && span.firstChild?.nodeType === Node.TEXT_NODE ? (span.firstChild as Text) : null;
+      // Skip spans that are neither a tab nor a plain text node (e.g. hyperlink
+      // <a>-wrapped runs) — matches getRectsForRange.
+      if (!isTab && !textNode) continue;
+
+      for (let i = 0; i < ranges.length; i++) {
+        const { from, to } = ranges[i];
+        // Same overlap test as getRectsForRange (half-open against [from, to)).
+        if (!(pmEnd > from && pmStart < to)) continue;
+
+        if (isTab) {
+          const spanRect = spanEl.getBoundingClientRect();
+          result[i].push({
+            x: (spanRect.left - containerRect.left) / this.zoom,
+            y: (spanRect.top - containerRect.top) / this.zoom,
+            width: spanRect.width / this.zoom,
+            height: spanRect.height / this.zoom,
+          });
+          continue;
+        }
+
+        const ownerDoc = spanEl.ownerDocument;
+        if (!ownerDoc || !textNode) continue;
+
+        const startChar = Math.max(0, from - pmStart);
+        const endChar = Math.min(textNode.length, to - pmStart);
+        if (startChar < endChar) {
+          const range = ownerDoc.createRange();
+          range.setStart(textNode, startChar);
+          range.setEnd(textNode, endChar);
+          for (const rect of Array.from(range.getClientRects())) {
+            result[i].push({
+              x: (rect.left - containerRect.left) / this.zoom,
+              y: (rect.top - containerRect.top) / this.zoom,
+              width: rect.width / this.zoom,
+              height: rect.height / this.zoom,
+            });
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Get the offset of the pages container from its parent viewport.
    * This is needed for positioning overlays that are rendered in the
    * viewport container rather than directly in the pages container.
@@ -218,7 +374,8 @@ export class RenderedDomContextImpl implements RenderedDomContext {
  */
 export function createRenderedDomContext(
   pagesContainer: HTMLElement,
-  zoom: number = 1
+  zoom: number = 1,
+  layoutData?: RenderedDomLayoutData
 ): RenderedDomContext {
-  return new RenderedDomContextImpl(pagesContainer, zoom);
+  return new RenderedDomContextImpl(pagesContainer, zoom, layoutData);
 }
