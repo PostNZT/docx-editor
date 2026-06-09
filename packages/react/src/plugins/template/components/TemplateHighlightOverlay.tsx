@@ -23,11 +23,70 @@ interface HighlightRect {
   tagType: TagType;
   varName: string;
   label: string;
-  isFirstRect: boolean;
+  /**
+   * True when the tag's text wraps across more than one line (a long name in a
+   * narrow table cell). The pill then becomes a multi-line button: the label
+   * wraps to fit inside the box instead of being clipped to a single line.
+   */
+  multiline: boolean;
   x: number;
   y: number;
   width: number;
   height: number;
+}
+
+/** A merged horizontal band covering one visual line of a tag. */
+interface LineGroup {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Cluster a tag's painted rects into one band per visual line.
+ *
+ * Rects on the same line (e.g. the tag is split across spans by a formatting
+ * boundary) share most of their vertical extent and are merged horizontally.
+ * Rects on different lines (the tag wrapped) have little vertical overlap and
+ * stay separate. The count of bands tells us whether the tag wrapped, and their
+ * union is the box for the single pill drawn over the whole tag.
+ *
+ * Exported for unit testing.
+ */
+export function groupRectsByLine(
+  tagRects: Array<{ x: number; y: number; width: number; height: number }>
+): LineGroup[] {
+  const sorted = [...tagRects].sort((a, b) => a.y - b.y || a.x - b.x);
+  const groups: LineGroup[] = [];
+
+  for (const r of sorted) {
+    const top = r.y;
+    const bottom = r.y + r.height;
+    const left = r.x;
+    const right = r.x + r.width;
+    const last = groups[groups.length - 1];
+
+    // Same line when the vertical overlap exceeds half the shorter box — robust
+    // to sub-pixel differences without fusing adjacent (wrapped) lines.
+    let sameLine = false;
+    if (last) {
+      const overlap = Math.min(bottom, last.bottom) - Math.max(top, last.top);
+      const minHeight = Math.min(bottom - top, last.bottom - last.top);
+      sameLine = overlap > minHeight * 0.5;
+    }
+
+    if (sameLine && last) {
+      last.left = Math.min(last.left, left);
+      last.top = Math.min(last.top, top);
+      last.right = Math.max(last.right, right);
+      last.bottom = Math.max(last.bottom, bottom);
+    } else {
+      groups.push({ left, top, right, bottom });
+    }
+  }
+
+  return groups;
 }
 
 export function TemplateHighlightOverlay({
@@ -59,19 +118,21 @@ export function TemplateHighlightOverlay({
       const tagRects = perTagRects[tagIndex] ?? [];
       if (tagRects.length === 0) return;
 
-      // ONE pill per tag. A tag whose text wraps across lines (e.g. a long name
-      // in a narrow table cell) yields one rect per line; rendering each as its
-      // own pill produced duplicate stacked buttons. Merge them into a single
-      // bounding box that covers every line the tag occupies.
+      // A tag can paint several rects: multiple spans on ONE line (a formatting
+      // boundary splits `[[`, the name and `]]`) and/or one rect PER line when a
+      // long name wraps inside a narrow table cell. Collapse them to ONE pill
+      // covering the tag's full extent — a single tidy button, never a clipped
+      // label stacked on an empty continuation pill.
+      const lineGroups = groupRectsByLine(tagRects);
       let left = Infinity;
       let top = Infinity;
       let right = -Infinity;
       let bottom = -Infinity;
-      for (const rect of tagRects) {
-        left = Math.min(left, rect.x);
-        top = Math.min(top, rect.y);
-        right = Math.max(right, rect.x + rect.width);
-        bottom = Math.max(bottom, rect.y + rect.height);
+      for (const group of lineGroups) {
+        left = Math.min(left, group.left);
+        top = Math.min(top, group.top);
+        right = Math.max(right, group.right);
+        bottom = Math.max(bottom, group.bottom);
       }
 
       rects.push({
@@ -79,7 +140,9 @@ export function TemplateHighlightOverlay({
         tagType: tag.type,
         varName: tag.name,
         label: tag.name,
-        isFirstRect: true,
+        // When the underlying text spans >1 line the box is tall enough to wrap
+        // the label inside it, so the full name stays readable in narrow cells.
+        multiline: lineGroups.length > 1,
         x: left + containerOffset.x,
         y: top + containerOffset.y,
         width: right - left,
@@ -113,6 +176,29 @@ export function TemplateHighlightOverlay({
     return () => observer.disconnect();
   }, [context.pagesContainer]);
 
+  // Recompute when the painted pages change. Large documents virtualize their
+  // pages: off-screen pages are empty shells, so a tag on one is positioned via
+  // the layout-engine fallback (which can't see table cell vAlign/margins) and
+  // its pill drifts. When such a page scrolls into view its content is painted —
+  // a subtree mutation we observe here — and we re-measure so the pill snaps onto
+  // the now-real DOM text. The overlay paints into a sibling container, never
+  // into pagesContainer, so this can't observe its own writes (no loop).
+  useEffect(() => {
+    let raf = 0;
+    const observer = new MutationObserver(() => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        setLayoutVersion((v) => v + 1);
+      });
+    });
+    observer.observe(context.pagesContainer, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [context.pagesContainer]);
+
   // Show all highlights, with enhanced styling for hovered/selected
   if (highlights.length === 0) {
     return null;
@@ -139,15 +225,26 @@ export function TemplateHighlightOverlay({
             data-var-name={rect.varName}
             style={{
               left: rect.x,
-              // minWidth (not width) guarantees the pill fully covers the
-              // underlying [[…]] text (no raw-text bleed-through) while CSS
-              // `width: max-content` lets it grow to fit the variable name when
-              // the text is narrower than the label — e.g. a long name wrapped
-              // inside a narrow table cell, which would otherwise clip to an
-              // unreadable "vments_made_amou…".
-              minWidth: rect.width,
               top: rect.y,
+              // Pin the pill to the painted text box so it covers the [[…]] text
+              // exactly (no raw-text bleed-through) and never spills past it into
+              // a neighbouring table cell.
+              width: rect.width,
+              minWidth: rect.width,
+              maxWidth: rect.width,
               height: rect.height,
+              // Wrapped tags get a multi-line button: let the long name wrap and
+              // break inside the box so it stays readable instead of clipping to
+              // an unreadable middle slice ("yments_made_amou").
+              ...(rect.multiline
+                ? {
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    lineHeight: 1.1,
+                    fontSize: 10,
+                    padding: '1px 3px',
+                  }
+                : null),
             }}
             onMouseEnter={() => onHover?.(rect.tagId)}
             onMouseLeave={() => onHover?.(undefined)}
@@ -157,9 +254,8 @@ export function TemplateHighlightOverlay({
               onSelect?.(rect.tagId);
             }}
           >
-            {/* One pill per tag (rects are merged in computeHighlights), so the
-                label always renders once. CSS grows the pill to fit the name
-                (width: max-content) and ellipsis-clips only past the cap. */}
+            {/* One button per tag covering its full (possibly wrapped) extent.
+                The label wraps inside when the box is multi-line. */}
             {rect.label}
           </div>
         );
