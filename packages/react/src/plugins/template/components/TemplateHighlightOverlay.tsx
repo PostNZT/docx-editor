@@ -41,13 +41,22 @@ export function TemplateHighlightOverlay({
   // Version counter bumped by resize/layout changes to trigger recompute
   const [layoutVersion, setLayoutVersion] = useState(0);
 
-  // Compute highlight rectangles synchronously during render (no blank frames)
+  // Compute highlight rectangles synchronously during render (no blank frames).
+  // Measure every tag in a SINGLE span scan (getRectsForRanges) instead of one
+  // full-document scan per tag — the per-tag scan was the dominant cost of the
+  // post-paint recompute and made pills lag/stagger behind the painted text on
+  // large templates. Falls back to per-range when the batched API is absent.
   const computeHighlights = useCallback((): HighlightRect[] => {
     const containerOffset = context.getContainerOffset();
     const rects: HighlightRect[] = [];
 
-    for (const tag of tags) {
-      const tagRects = context.getRectsForRange(tag.from, tag.to);
+    const ranges = tags.map((t) => ({ from: t.from, to: t.to }));
+    const perTagRects = context.getRectsForRanges
+      ? context.getRectsForRanges(ranges)
+      : ranges.map((r) => context.getRectsForRange(r.from, r.to));
+
+    tags.forEach((tag, tagIndex) => {
+      const tagRects = perTagRects[tagIndex] ?? [];
       tagRects.forEach((rect, rectIndex) => {
         rects.push({
           tagId: tag.id,
@@ -61,7 +70,7 @@ export function TemplateHighlightOverlay({
           height: rect.height,
         });
       });
-    }
+    });
 
     return rects;
   }, [context, tags]);

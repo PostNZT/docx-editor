@@ -192,6 +192,76 @@ export class RenderedDomContextImpl implements RenderedDomContext {
   }
 
   /**
+   * Batched {@link getRectsForRange}. Scans the rendered spans ONCE and returns
+   * one rect array per input range (index-aligned with `ranges`). Equivalent to
+   * calling getRectsForRange for each range, but avoids re-querying the whole
+   * span set per range — the dominant cost when positioning every template tag
+   * on a large document. The per-span logic (tab full-width, non-text-child
+   * skip, character slicing, zoom, container-relative coords) is identical.
+   */
+  getRectsForRanges(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
+    const result = ranges.map(
+      () => [] as Array<{ x: number; y: number; width: number; height: number }>
+    );
+    if (ranges.length === 0) return result;
+
+    const containerRect = this.pagesContainer.getBoundingClientRect();
+    const spans = this.pagesContainer.querySelectorAll('span[data-pm-start][data-pm-end]');
+
+    for (const span of Array.from(spans)) {
+      const spanEl = span as HTMLElement;
+      const pmStart = Number(spanEl.dataset.pmStart);
+      const pmEnd = Number(spanEl.dataset.pmEnd);
+      const isTab = spanEl.classList.contains('layout-run-tab');
+      const textNode =
+        !isTab && span.firstChild?.nodeType === Node.TEXT_NODE ? (span.firstChild as Text) : null;
+      // Skip spans that are neither a tab nor a plain text node (e.g. hyperlink
+      // <a>-wrapped runs) — matches getRectsForRange.
+      if (!isTab && !textNode) continue;
+
+      for (let i = 0; i < ranges.length; i++) {
+        const { from, to } = ranges[i];
+        // Same overlap test as getRectsForRange (half-open against [from, to)).
+        if (!(pmEnd > from && pmStart < to)) continue;
+
+        if (isTab) {
+          const spanRect = spanEl.getBoundingClientRect();
+          result[i].push({
+            x: (spanRect.left - containerRect.left) / this.zoom,
+            y: (spanRect.top - containerRect.top) / this.zoom,
+            width: spanRect.width / this.zoom,
+            height: spanRect.height / this.zoom,
+          });
+          continue;
+        }
+
+        const ownerDoc = spanEl.ownerDocument;
+        if (!ownerDoc || !textNode) continue;
+
+        const startChar = Math.max(0, from - pmStart);
+        const endChar = Math.min(textNode.length, to - pmStart);
+        if (startChar < endChar) {
+          const range = ownerDoc.createRange();
+          range.setStart(textNode, startChar);
+          range.setEnd(textNode, endChar);
+          for (const rect of Array.from(range.getClientRects())) {
+            result[i].push({
+              x: (rect.left - containerRect.left) / this.zoom,
+              y: (rect.top - containerRect.top) / this.zoom,
+              width: rect.width / this.zoom,
+              height: rect.height / this.zoom,
+            });
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Get the offset of the pages container from its parent viewport.
    * This is needed for positioning overlays that are rendered in the
    * viewport container rather than directly in the pages container.

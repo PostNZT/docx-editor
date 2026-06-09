@@ -53,6 +53,21 @@ export interface RenderedDomContext {
     to: number
   ): Array<{ x: number; y: number; width: number; height: number }>;
 
+  /**
+   * Batched form of {@link getRectsForRange}: scans the rendered spans ONCE and
+   * returns one rect array per input range (index-aligned with `ranges`).
+   *
+   * Positioning many ranges at once — e.g. every template-variable tag on the
+   * page — via repeated getRectsForRange() re-queries the entire span set per
+   * range (O(ranges × spans)), which is the dominant cost of the overlay's
+   * post-paint recompute on large documents. This collapses that to a single
+   * span scan. Optional so existing RenderedDomContext consumers/mocks keep
+   * working; callers should fall back to getRectsForRange when it is absent.
+   */
+  getRectsForRanges?(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>>;
+
   /** Current zoom level (1 = 100%). */
   zoom: number;
 
