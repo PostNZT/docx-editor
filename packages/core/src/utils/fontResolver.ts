@@ -34,7 +34,8 @@ type FontCategory = 'sans-serif' | 'serif' | 'monospace' | 'cursive' | 'fantasy'
  * Font mapping entry
  */
 interface FontMapping {
-  googleFont: string;
+  /** Google Fonts metric-compatible substitute, or null to use the real font only. */
+  googleFont: string | null;
   category: FontCategory;
   fallbackStack: string[];
   /** OS/2 single-line ratio: (usWinAscent + usWinDescent) / unitsPerEm (no external leading) */
@@ -80,10 +81,20 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     singleLineRatio: 1.1172, // (1854+434)/2048 — no sTypoLineGap
   },
   'times new roman': {
-    googleFont: 'Tinos',
+    // Render the genuine Times New Roman; do not substitute a web font. On
+    // systems with the font installed (Windows/Office) this is exact; elsewhere
+    // it falls back to the platform serif. (Tinos removed per product decision —
+    // it only matched Google Docs' substitute, not real Times New Roman.)
+    googleFont: null,
     category: 'serif',
-    fallbackStack: ['Times New Roman', 'Tinos', 'Times', 'serif'],
-    singleLineRatio: 1.1074, // (1825+443)/2048 — no sTypoLineGap
+    fallbackStack: ['Times New Roman', 'Liberation Serif', 'Times', 'serif'],
+    // Deliberate deviation from Word's usWin metric (1.1074): use the browser /
+    // Google-Docs line metric instead. Chrome (and therefore Google Docs, the
+    // visual reference here) lays out Times New Roman with a "normal" line height
+    // of ~1.15× — the font's hhea (ascent+descent+lineGap)/em — taller than
+    // Word's usWin height. Matching it makes paginated line spacing track Google
+    // Docs, at the cost of being marginally looser than Microsoft Word.
+    singleLineRatio: 1.15, // browser "normal" line-height ≈ (1825+443+~87)/2048
   },
   'courier new': {
     googleFont: 'Cousine',
@@ -349,7 +360,7 @@ export function resolveFontFamily(docxFontName: string): ResolvedFont {
       googleFont: mapping.googleFont,
       cssFallback: mapping.fallbackStack.map(quoteFontName).join(', '),
       originalFont: docxFontName,
-      hasGoogleEquivalent: true,
+      hasGoogleEquivalent: mapping.googleFont !== null,
       singleLineRatio: mapping.singleLineRatio,
     };
   }
@@ -484,5 +495,5 @@ export function getGoogleFontEquivalent(docxFontName: string): string | null {
  */
 export function hasGoogleFontEquivalent(docxFontName: string): boolean {
   const normalizedName = extractPrimaryFontName(docxFontName).trim().toLowerCase();
-  return normalizedName in FONT_MAPPINGS;
+  return FONT_MAPPINGS[normalizedName]?.googleFont != null;
 }

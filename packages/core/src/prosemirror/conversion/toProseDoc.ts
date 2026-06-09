@@ -41,7 +41,9 @@ import type {
   MoveTo,
   MathEquation,
 } from '../../types/document';
+import type { ShadingProperties } from '../../types/colors';
 import { emuToPixels } from '../../docx/imageParser';
+import { ensureHexPrefix } from '../../utils/colorResolver';
 import { createStyleResolver, type StyleResolver } from '../styles';
 import type { TableAttrs, TableRowAttrs, TableCellAttrs } from '../schema/nodes';
 
@@ -1080,6 +1082,30 @@ function convertRun(
 }
 
 /**
+ * Merge two w:rFonts (fontFamily) descriptors slot-by-slot.
+ *
+ * Per ECMA-376 §17.3.2.26 the font slots (ascii / hAnsi / eastAsia / cs and
+ * their theme variants) cascade INDEPENDENTLY: a run that overrides only one
+ * slot — e.g. `<w:rFonts w:cs="Times New Roman"/>` on a hyperlink run — must
+ * keep the ascii/hAnsi font it inherited from the paragraph or style. A
+ * wholesale object replace drops the inherited slots, so the run loses its
+ * Latin font and falls back to the default UI font at the wrong size.
+ */
+function mergeFontFamily(
+  target: TextFormatting['fontFamily'] | undefined,
+  source: NonNullable<TextFormatting['fontFamily']>
+): NonNullable<TextFormatting['fontFamily']> {
+  if (!target) return source;
+  const merged = { ...target };
+  (Object.keys(source) as (keyof typeof source)[]).forEach((key) => {
+    if (source[key] !== undefined) {
+      (merged as Record<string, unknown>)[key] = source[key];
+    }
+  });
+  return merged;
+}
+
+/**
  * Merge two TextFormatting objects (source overrides target)
  */
 function mergeTextFormatting(
@@ -1111,7 +1137,9 @@ function mergeTextFormatting(
   }
   if (source.highlight !== undefined) result.highlight = source.highlight;
   if (source.fontSize !== undefined) result.fontSize = source.fontSize;
-  if (source.fontFamily !== undefined) result.fontFamily = source.fontFamily;
+  if (source.fontFamily !== undefined) {
+    result.fontFamily = mergeFontFamily(result.fontFamily, source.fontFamily);
+  }
   if (source.vertAlign !== undefined) result.vertAlign = source.vertAlign;
   if (source.allCaps !== undefined) result.allCaps = source.allCaps;
   if (source.smallCaps !== undefined) result.smallCaps = source.smallCaps;
@@ -1380,9 +1408,17 @@ function convertHyperlink(
 
   for (const child of hyperlink.children) {
     if (child.type === 'run') {
-      // Merge style formatting with run's inline formatting
+      // Merge style formatting with run's inline formatting.
+      //
+      // Use getRunStyleOwnProperties (not resolveRunStyle) — same as convertRun.
+      // The Hyperlink character style defines no font, but resolveRunStyle bakes
+      // docDefaults (e.g. minorHAnsi → Calibri 11pt) into its result; merged over
+      // the paragraph style that would clobber the paragraph's real font (e.g.
+      // Times New Roman 12pt), so an email link renders as 11pt Calibri. The
+      // styleFormatting argument already carries docDefaults from paragraph-style
+      // resolution, so only the character style's OWN properties are needed.
       const runStyleFormatting = child.formatting?.styleId
-        ? styleResolver?.resolveRunStyle(child.formatting.styleId)
+        ? styleResolver?.getRunStyleOwnProperties(child.formatting.styleId)
         : undefined;
       const mergedFormatting = mergeTextFormatting(
         mergeTextFormatting(styleFormatting, runStyleFormatting),
@@ -1404,9 +1440,28 @@ function convertHyperlink(
 }
 
 /**
+ * Map a run-level shading (`w:shd`) to a highlight color string, when it
+ * encodes a solid background fill. The editor emits `w:shd w:val="clear"` as
+ * the carrier for custom highlight colors that fall outside the OOXML
+ * named-highlight palette (§17.18.40), so a concrete `fill` rgb reads back as
+ * the highlight mark. Only a `clear` / no-pattern fill maps, where Word paints
+ * the background as `w:fill`. Other patterns are skipped: `solid` paints the
+ * pattern color (`w:color`) over the fill, and `pct*`/stripes blend the two —
+ * neither is a flat color the highlight can reproduce. Theme-only / `auto`
+ * fills carry no concrete rgb and are likewise left untouched. (#712)
+ */
+function runShadingToHighlight(shading: ShadingProperties | undefined): string | undefined {
+  if (!shading) return undefined;
+  if (shading.pattern && shading.pattern !== 'clear') return undefined;
+  const rgb = shading.fill?.rgb;
+  if (!rgb || shading.fill?.auto) return undefined;
+  return ensureHexPrefix(rgb);
+}
+
+/**
  * Convert TextFormatting to ProseMirror marks
  */
-function textFormattingToMarks(
+export function textFormattingToMarks(
   formatting: TextFormatting | undefined
 ): ReturnType<typeof schema.mark>[] {
   if (!formatting) return [];
@@ -1454,11 +1509,19 @@ function textFormattingToMarks(
     );
   }
 
-  // Highlight
-  if (formatting.highlight && formatting.highlight !== 'none') {
+  // Highlight (w:highlight) — or run-level shading fill (w:shd) used as a
+  // background. The editor serializes custom (non-OOXML-named) highlight colors
+  // as `<w:shd w:fill="...">` because w:highlight only permits a fixed palette
+  // (§17.18.40). On import that shading must round-trip back to the highlight
+  // mark, otherwise the background silently disappears. (#712)
+  const highlightColor =
+    formatting.highlight && formatting.highlight !== 'none'
+      ? formatting.highlight
+      : runShadingToHighlight(formatting.shading);
+  if (highlightColor) {
     marks.push(
       schema.mark('highlight', {
-        color: formatting.highlight,
+        color: highlightColor,
       })
     );
   }

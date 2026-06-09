@@ -394,16 +394,22 @@ function parseNumberFormat(format: string): NumberFormat {
 function parseLevelParagraphProps(pPr: XmlElement): ParagraphFormatting {
   const formatting: ParagraphFormatting = {};
 
-  // Parse indentation (w:ind)
+  // Parse indentation (w:ind). Per ECMA-376 §17.3.1.17, w:start/w:end are the
+  // bidi-aware equivalents of w:left/w:right; some writers emit only the modern
+  // form and the older form is silently ignored if both are absent.
   const indEl = findChild(pPr, 'w', 'ind');
   if (indEl) {
     const left = parseNumericAttribute(indEl, 'w', 'left');
     const right = parseNumericAttribute(indEl, 'w', 'right');
+    const start = parseNumericAttribute(indEl, 'w', 'start');
+    const end = parseNumericAttribute(indEl, 'w', 'end');
     const firstLine = parseNumericAttribute(indEl, 'w', 'firstLine');
     const hanging = parseNumericAttribute(indEl, 'w', 'hanging');
 
-    if (left !== undefined) formatting.indentLeft = left;
-    if (right !== undefined) formatting.indentRight = right;
+    const resolvedLeft = left ?? start;
+    const resolvedRight = right ?? end;
+    if (resolvedLeft !== undefined) formatting.indentLeft = resolvedLeft;
+    if (resolvedRight !== undefined) formatting.indentRight = resolvedRight;
 
     if (hanging !== undefined) {
       formatting.indentFirstLine = -hanging;

@@ -528,15 +528,20 @@ export function serializeSectionProperties(props: SectionProperties | undefined)
     parts.push(colsXml);
   }
 
-  // Document grid
-  const docGridXml = serializeDocGrid(props);
-  if (docGridXml) {
-    parts.push(docGridXml);
-  }
+  // Remaining EG_SectPrContents must follow CT_SectPr schema order
+  // (cols, vAlign, titlePg, bidi, docGrid). Strict OOXML validators reject a
+  // sectPr that emits docGrid early or bidi before titlePg, even though Word
+  // tolerates it. This matters now that mid-body section breaks reuse this
+  // serializer inside w:pPr (#680).
 
   // Vertical alignment
   if (props.verticalAlign) {
     parts.push(`<w:vAlign w:val="${props.verticalAlign}"/>`);
+  }
+
+  // Title page (different first page header/footer)
+  if (props.titlePg) {
+    parts.push('<w:titlePg/>');
   }
 
   // Bidirectional
@@ -544,9 +549,10 @@ export function serializeSectionProperties(props: SectionProperties | undefined)
     parts.push('<w:bidi/>');
   }
 
-  // Title page (different first page header/footer)
-  if (props.titlePg) {
-    parts.push('<w:titlePg/>');
+  // Document grid
+  const docGridXml = serializeDocGrid(props);
+  if (docGridXml) {
+    parts.push(docGridXml);
   }
 
   // Even and odd headers

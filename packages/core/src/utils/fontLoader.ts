@@ -369,7 +369,8 @@ export const FONT_MAPPING: Record<string, string> = {
   Calibri: 'Carlito',
   Cambria: 'Caladea',
   Arial: 'Arimo',
-  'Times New Roman': 'Tinos',
+  // 'Times New Roman' intentionally omitted: render the genuine font, never
+  // preload a Google substitute (Tinos) for it.
   'Courier New': 'Cousine',
   Garamond: 'EB Garamond',
   'Book Antiqua': 'EB Garamond',

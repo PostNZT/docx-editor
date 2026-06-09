@@ -155,88 +155,13 @@ function rgbToHex(r: number, g: number, b: number): string {
 }
 
 /**
- * Convert RGB to HSL
- *
- * @param r - Red 0-255
- * @param g - Green 0-255
- * @param b - Blue 0-255
- * @returns HSL object with h (0-360), s (0-1), l (0-1)
- */
-function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-
-  if (max === min) {
-    return { h: 0, s: 0, l };
-  }
-
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-  let h: number;
-  switch (max) {
-    case r:
-      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
-      break;
-    case g:
-      h = ((b - r) / d + 2) / 6;
-      break;
-    case b:
-      h = ((r - g) / d + 4) / 6;
-      break;
-    default:
-      h = 0;
-  }
-
-  return { h: h * 360, s, l };
-}
-
-/**
- * Convert HSL to RGB
- *
- * @param h - Hue 0-360
- * @param s - Saturation 0-1
- * @param l - Lightness 0-1
- * @returns RGB object with r, g, b values 0-255
- */
-function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
-  h = h / 360;
-
-  if (s === 0) {
-    const gray = Math.round(l * 255);
-    return { r: gray, g: gray, b: gray };
-  }
-
-  const hue2rgb = (p: number, q: number, t: number) => {
-    if (t < 0) t += 1;
-    if (t > 1) t -= 1;
-    if (t < 1 / 6) return p + (q - p) * 6 * t;
-    if (t < 1 / 2) return q;
-    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-    return p;
-  };
-
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-  const p = 2 * l - q;
-
-  return {
-    r: Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
-    g: Math.round(hue2rgb(p, q, h) * 255),
-    b: Math.round(hue2rgb(p, q, h - 1 / 3) * 255),
-  };
-}
-
-/**
  * Apply tint to a color (make lighter by blending with white)
  *
  * OOXML tint algorithm:
- * - Converts to HSL
- * - Adjusts luminance: newLum = lum + (1 - lum) * tint
+ * Uses OOXML per-channel linear interpolation toward white
+ * (new_channel = channel + (255 - channel) * tint), which matches Word.
+ * The previous HSL-luminance approach distorted hue/saturation on saturated
+ * theme colors and produced visibly wrong tints. (ported from upstream #270)
  *
  * @param hex - 6-character hex color (no #)
  * @param tint - Tint value 0-1 (0 = no change, 1 = fully white)
@@ -248,21 +173,15 @@ function applyTint(hex: string, tint: number): string {
   }
 
   const rgb = hexToRgb(hex);
-  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-  // Apply tint: increase luminance toward white
-  hsl.l = hsl.l + (1 - hsl.l) * tint;
-
-  const newRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
-  return rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+  const lerp = (c: number) => Math.min(255, Math.max(0, Math.round(c + (255 - c) * tint)));
+  return rgbToHex(lerp(rgb.r), lerp(rgb.g), lerp(rgb.b));
 }
 
 /**
  * Apply shade to a color (make darker by blending with black)
  *
- * OOXML shade algorithm:
- * - Converts to HSL
- * - Adjusts luminance: newLum = lum * shade
+ * Uses OOXML per-channel scaling toward black (new_channel = channel * shade),
+ * matching Word; replaces the prior HSL-luminance approach. (upstream #270)
  *
  * @param hex - 6-character hex color (no #)
  * @param shade - Shade value 0-1 (0 = fully black, 1 = no change)
@@ -274,13 +193,8 @@ function applyShade(hex: string, shade: number): string {
   }
 
   const rgb = hexToRgb(hex);
-  const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-  // Apply shade: decrease luminance toward black
-  hsl.l = hsl.l * shade;
-
-  const newRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
-  return rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+  const scale = (c: number) => Math.min(255, Math.max(0, Math.round(c * shade)));
+  return rgbToHex(scale(rgb.r), scale(rgb.g), scale(rgb.b));
 }
 
 /**
@@ -377,10 +291,15 @@ export function resolveColor(
       hexColor = color.rgb ?? defaultColor;
     }
 
-    // Apply tint/shade modifiers
+    // Apply tint/shade modifiers. Per ECMA-376, w:themeTint/w:themeShade are
+    // ST_UcharHexNumber "keep" fractions: the byte/255 is how much of the base
+    // color survives (0xFF = unchanged). applyShade already takes a keep value
+    // (c * shade). applyTint takes a "toward white" amount, so the tint byte
+    // must be inverted: keep=0x33 (Lighter 80%) → 0.8 toward white. Verified
+    // against Word's cached value: accent1 #4472C4 + themeTint="66" → #B4C6E7.
     if (color.themeTint) {
-      const tintValue = parseModifierValue(color.themeTint);
-      hexColor = applyTint(hexColor, tintValue);
+      const tintKeep = parseModifierValue(color.themeTint);
+      hexColor = applyTint(hexColor, 1 - tintKeep);
     } else if (color.themeShade) {
       const shadeValue = parseModifierValue(color.themeShade);
       hexColor = applyShade(hexColor, shadeValue);
@@ -723,10 +642,14 @@ const THEME_MATRIX_ROWS: Array<{
   hexValue: string; // OOXML hex modifier
   labelSuffix: string;
 }> = [
+  // hexValue is the OOXML w:themeTint/w:themeShade byte (a "keep" fraction:
+  // byte/255 = how much of the base color survives). Lighter 80% keeps 20%
+  // → 0x33; Darker 25% keeps 75% → 0xBF. `value` is the internal "toward
+  // white/black" amount used only to render the swatch via applyTint/applyShade.
   { type: 'base', value: 0, hexValue: '', labelSuffix: '' },
-  { type: 'tint', value: 0.8, hexValue: 'CC', labelSuffix: ', Lighter 80%' },
-  { type: 'tint', value: 0.6, hexValue: '99', labelSuffix: ', Lighter 60%' },
-  { type: 'tint', value: 0.4, hexValue: '66', labelSuffix: ', Lighter 40%' },
+  { type: 'tint', value: 0.8, hexValue: '33', labelSuffix: ', Lighter 80%' },
+  { type: 'tint', value: 0.6, hexValue: '66', labelSuffix: ', Lighter 60%' },
+  { type: 'tint', value: 0.4, hexValue: '99', labelSuffix: ', Lighter 40%' },
   { type: 'shade', value: 0.75, hexValue: 'BF', labelSuffix: ', Darker 25%' },
   { type: 'shade', value: 0.5, hexValue: '80', labelSuffix: ', Darker 50%' },
 ];

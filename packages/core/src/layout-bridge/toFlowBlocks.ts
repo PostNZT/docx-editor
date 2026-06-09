@@ -142,6 +142,14 @@ function extractRunFormatting(marks: readonly Mark[], theme?: Theme | null): Run
         formatting.strike = true;
         break;
 
+      case 'allCaps':
+        formatting.allCaps = true;
+        break;
+
+      case 'smallCaps':
+        formatting.smallCaps = true;
+        break;
+
       case 'textColor': {
         const attrs = mark.attrs as TextColorAttrs;
         if (attrs.themeColor || attrs.rgb) {
@@ -247,7 +255,10 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       const formatting = extractRunFormatting(child.marks, theme);
       const run: TextRun = {
         kind: 'text',
-        text: child.text,
+        // w:caps is a display transform; uppercase the flow text so Canvas
+        // measurement, line wrapping, and painting all agree. The hidden
+        // ProseMirror keeps the original text for editing/selection/save.
+        text: formatting.allCaps ? child.text.toUpperCase() : child.text,
         ...formatting,
         pmStart: childPos,
         pmEnd: childPos + child.nodeSize,
@@ -301,7 +312,12 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       };
       runs.push(run);
     } else if (child.type.name === 'field') {
-      // Field node — convert to FieldRun for render-time substitution
+      // Field node — convert to FieldRun for render-time substitution.
+      // Carry the run formatting (font, size, bold, color, …) from the field's
+      // marks so the substituted value renders in the document font, not the
+      // painter default. Otherwise a DATE field like "April 8, 2026" falls back
+      // to Calibri while the surrounding "Dated:" text stays Times New Roman.
+      const formatting = extractRunFormatting(child.marks, theme);
       const ft = child.attrs.fieldType as string;
       const mappedType: FieldRun['fieldType'] =
         ft === 'PAGE'
@@ -314,6 +330,7 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
                 ? 'TIME'
                 : 'OTHER';
       const run: FieldRun = {
+        ...formatting,
         kind: 'field',
         fieldType: mappedType,
         fallback: (child.attrs.displayText as string) || '',
@@ -343,7 +360,7 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
           const formatting = extractRunFormatting(sdtChild.marks, theme);
           const run: TextRun = {
             kind: 'text',
-            text: sdtChild.text,
+            text: formatting.allCaps ? sdtChild.text.toUpperCase() : sdtChild.text,
             ...formatting,
             pmStart: sdtChildPos,
             pmEnd: sdtChildPos + sdtChild.nodeSize,

@@ -34,6 +34,27 @@ import {
   hasPageBreakBefore,
 } from './keep-together';
 
+/**
+ * A block carries no visible content when it is a paragraph with no text,
+ * image, or value-bearing field — i.e. an empty / spacer paragraph (or one
+ * holding only tabs or line breaks). Non-paragraph blocks (tables, images) are
+ * always considered visible. Used to drop a spurious trailing blank page.
+ */
+function blockHasVisibleContent(block: FlowBlock): boolean {
+  if (block.kind !== 'paragraph') return true;
+  for (const run of (block as ParagraphBlock).runs ?? []) {
+    if (run.kind === 'text' && run.text.trim().length > 0) return true;
+    if (run.kind === 'image') return true;
+    if (run.kind === 'field') {
+      // PAGE/NUMPAGES resolve to a number at paint time; OTHER/DATE/TIME paint
+      // their fallback (empty fallback => nothing, matching the painter).
+      if (run.fieldType === 'PAGE' || run.fieldType === 'NUMPAGES') return true;
+      if ((run.fallback ?? '').trim().length > 0) return true;
+    }
+  }
+  return false;
+}
+
 // Default page size (US Letter in pixels at 96 DPI)
 const DEFAULT_PAGE_SIZE = { w: 816, h: 1056 };
 
@@ -268,9 +289,33 @@ export function layoutDocument(
     paginator.getCurrentState();
   }
 
+  // Drop spurious blank pages that paint nothing. Tall line spacing or a
+  // trailing/spacer empty paragraph can land a content-less paragraph on its
+  // own page — e.g. an empty paragraph stranded between the body and a page
+  // break before a "Certificate of Service" section, producing a blank page in
+  // the middle. Word/Google never show such a page (the empty paragraph stays
+  // at the bottom of the previous page). Remove any page whose fragments are
+  // all invisible (empty) paragraphs. Genuinely empty pages with NO fragments
+  // (e.g. an intentional blank page from consecutive page breaks) are kept, as
+  // is the final page when the whole document is empty.
+  const blockById = new Map(blocks.map((b) => [String(b.id), b]));
+  const pageRendersContent = (page: (typeof paginator.pages)[number]): boolean => {
+    if (page.fragments.length === 0) return true; // keep deliberate blank pages
+    return page.fragments.some((f) => {
+      const blk = f.blockId != null ? blockById.get(String(f.blockId)) : undefined;
+      return blk ? blockHasVisibleContent(blk) : true;
+    });
+  };
+  const keptPages = paginator.pages.filter(pageRendersContent);
+  const finalPages = keptPages.length > 0 ? keptPages : paginator.pages.slice(0, 1);
+  // Renumber after removals so page numbers (and PAGE fields) stay sequential.
+  finalPages.forEach((page, idx) => {
+    page.number = idx + 1;
+  });
+
   return {
     pageSize,
-    pages: paginator.pages,
+    pages: finalPages,
     columns: options.columns,
     pageGap: options.pageGap,
   };

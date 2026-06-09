@@ -23,6 +23,11 @@ export type RunFormatting = {
   italic?: boolean;
   underline?: boolean | { style?: string; color?: string };
   strike?: boolean;
+  /** w:caps — glyphs render uppercase (the flow run's text is uppercased so
+   *  Canvas measurement and paint agree). */
+  allCaps?: boolean;
+  /** w:smallCaps — lowercase letters render as small capitals (CSS font-variant). */
+  smallCaps?: boolean;
   color?: string;
   highlight?: string;
   fontFamily?: string;
