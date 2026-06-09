@@ -37,12 +37,12 @@ function line(width: number, lineHeight: number): MeasuredLine {
 function measure(lineHeight: number): ParagraphMeasure {
   return { kind: 'paragraph', lines: [line(100, lineHeight)], totalHeight: lineHeight };
 }
-function textBlock(id: number, text: string): ParagraphBlock {
+function textBlock(id: number, text: string, pageBreakBefore = false): ParagraphBlock {
   return {
     kind: 'paragraph',
     id,
     runs: [{ kind: 'text', text, pmStart: 0, pmEnd: text.length }],
-    attrs: {},
+    attrs: pageBreakBefore ? { pageBreakBefore: true } : {},
     pmStart: 0,
     pmEnd: text.length + 1,
   };
@@ -55,13 +55,33 @@ function layout(blocks: FlowBlock[], measures: Measure[]) {
   return layoutDocument(blocks, measures, { pageSize: PAGE, margins: MARGINS });
 }
 
-describe('layoutDocument — trailing blank page', () => {
+describe('layoutDocument — blank page removal', () => {
   test('drops a trailing page that holds only an empty paragraph', () => {
     // Block A nearly fills page 1 (800 of 864); the empty paragraph spills to page 2.
     const blocks = [textBlock(1, 'fills the page'), emptyBlock(2)];
     const measures = [measure(800), measure(100)];
     const layoutResult = layout(blocks, measures);
     expect(layoutResult.pages.length).toBe(1);
+  });
+
+  test('drops an INTERIOR blank page (empty paragraph stranded before a page break)', () => {
+    // A fills page 1; the empty paragraph spills to page 2; C has pageBreakBefore
+    // so it would land on page 3 — leaving page 2 blank. The blank page 2 must be
+    // removed and pages renumbered so C is page 2. (Mirrors the empty paragraph
+    // stranded before a "Certificate of Service" page break.)
+    const blocks = [
+      textBlock(1, 'fills the page'),
+      emptyBlock(2),
+      textBlock(3, 'certificate', true),
+    ];
+    const measures = [measure(800), measure(100), measure(100)];
+    const layoutResult = layout(blocks, measures);
+    expect(layoutResult.pages.length).toBe(2);
+    expect(layoutResult.pages.map((p) => p.number)).toEqual([1, 2]);
+    // Page 2 carries the certificate text, not a blank.
+    const page2BlockIds = layoutResult.pages[1].fragments.map((f) => f.blockId);
+    expect(page2BlockIds).toContain(3);
+    expect(page2BlockIds).not.toContain(2);
   });
 
   test('keeps the second page when it carries real text', () => {

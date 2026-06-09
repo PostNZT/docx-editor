@@ -289,24 +289,33 @@ export function layoutDocument(
     paginator.getCurrentState();
   }
 
-  // Drop spurious trailing blank page(s): tall line spacing or trailing
-  // empty/spacer paragraphs can spill onto a fresh page that paints nothing,
-  // which Word/Google never show. Only pages whose every fragment is an
-  // invisible (empty) paragraph are removed; never drop the final page.
+  // Drop spurious blank pages that paint nothing. Tall line spacing or a
+  // trailing/spacer empty paragraph can land a content-less paragraph on its
+  // own page — e.g. an empty paragraph stranded between the body and a page
+  // break before a "Certificate of Service" section, producing a blank page in
+  // the middle. Word/Google never show such a page (the empty paragraph stays
+  // at the bottom of the previous page). Remove any page whose fragments are
+  // all invisible (empty) paragraphs. Genuinely empty pages with NO fragments
+  // (e.g. an intentional blank page from consecutive page breaks) are kept, as
+  // is the final page when the whole document is empty.
   const blockById = new Map(blocks.map((b) => [String(b.id), b]));
-  while (paginator.pages.length > 1) {
-    const last = paginator.pages[paginator.pages.length - 1];
-    const hasVisible = last.fragments.some((f) => {
+  const pageRendersContent = (page: (typeof paginator.pages)[number]): boolean => {
+    if (page.fragments.length === 0) return true; // keep deliberate blank pages
+    return page.fragments.some((f) => {
       const blk = f.blockId != null ? blockById.get(String(f.blockId)) : undefined;
       return blk ? blockHasVisibleContent(blk) : true;
     });
-    if (hasVisible) break;
-    paginator.pages.pop();
-  }
+  };
+  const keptPages = paginator.pages.filter(pageRendersContent);
+  const finalPages = keptPages.length > 0 ? keptPages : paginator.pages.slice(0, 1);
+  // Renumber after removals so page numbers (and PAGE fields) stay sequential.
+  finalPages.forEach((page, idx) => {
+    page.number = idx + 1;
+  });
 
   return {
     pageSize,
-    pages: paginator.pages,
+    pages: finalPages,
     columns: options.columns,
     pageGap: options.pageGap,
   };
