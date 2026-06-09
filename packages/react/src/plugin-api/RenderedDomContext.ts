@@ -215,79 +215,52 @@ export class RenderedDomContextImpl implements RenderedDomContext {
     from: number,
     to: number
   ): Array<{ x: number; y: number; width: number; height: number }> {
-    if (this.hasLayoutData()) {
-      return this.layoutRectsForRanges([{ from, to }])[0] ?? [];
-    }
-    const containerRect = this.pagesContainer.getBoundingClientRect();
-    const rects: Array<{ x: number; y: number; width: number; height: number }> = [];
-
-    const spans = this.pagesContainer.querySelectorAll('span[data-pm-start][data-pm-end]');
-
-    for (const span of Array.from(spans)) {
-      const spanEl = span as HTMLElement;
-      const pmStart = Number(spanEl.dataset.pmStart);
-      const pmEnd = Number(spanEl.dataset.pmEnd);
-
-      // Check if this span overlaps with selection
-      if (pmEnd > from && pmStart < to) {
-        // Handle tab spans - highlight full visual width
-        if (spanEl.classList.contains('layout-run-tab')) {
-          const spanRect = spanEl.getBoundingClientRect();
-          rects.push({
-            x: (spanRect.left - containerRect.left) / this.zoom,
-            y: (spanRect.top - containerRect.top) / this.zoom,
-            width: spanRect.width / this.zoom,
-            height: spanRect.height / this.zoom,
-          });
-          continue;
-        }
-
-        if (span.firstChild?.nodeType !== Node.TEXT_NODE) continue;
-
-        const textNode = span.firstChild as Text;
-        const ownerDoc = spanEl.ownerDocument;
-        if (!ownerDoc) continue;
-
-        // Calculate character range within this span
-        const startChar = Math.max(0, from - pmStart);
-        const endChar = Math.min(textNode.length, to - pmStart);
-
-        if (startChar < endChar) {
-          const range = ownerDoc.createRange();
-          range.setStart(textNode, startChar);
-          range.setEnd(textNode, endChar);
-
-          // Get all client rects (handles line wraps)
-          const clientRects = range.getClientRects();
-          for (const rect of Array.from(clientRects)) {
-            rects.push({
-              x: (rect.left - containerRect.left) / this.zoom,
-              y: (rect.top - containerRect.top) / this.zoom,
-              width: rect.width / this.zoom,
-              height: rect.height / this.zoom,
-            });
-          }
-        }
-      }
-    }
-
-    return rects;
+    return this.getRectsForRanges([{ from, to }])[0] ?? [];
   }
 
   /**
-   * Batched {@link getRectsForRange}. Scans the rendered spans ONCE and returns
-   * one rect array per input range (index-aligned with `ranges`). Equivalent to
-   * calling getRectsForRange for each range, but avoids re-querying the whole
-   * span set per range — the dominant cost when positioning every template tag
-   * on a large document. The per-span logic (tab full-width, non-text-child
-   * skip, character slicing, zoom, container-relative coords) is identical.
+   * Batched range→rect mapping, index-aligned with `ranges`.
+   *
+   * Strategy: measure the PAINTED DOM first (ground truth), and fall back to the
+   * layout engine only for ranges the DOM can't answer.
+   *
+   * The painted text is the single source of truth for where a glyph actually
+   * sits — it already reflects table cell margins, cell vertical alignment
+   * (top/center/bottom), font metrics and line spacing. The layout-engine model
+   * (selectionToRects) only approximates these and notably does NOT model table
+   * cell padding or vertical alignment, so deriving pill rects from it floated
+   * the pills tens of pixels above the text in vertically-aligned table cells.
+   * Reading getClientRects on the rendered spans removes that whole class of
+   * drift, so pills stick to their variable.
+   *
+   * The DOM scan is a single querySelectorAll over all data-pm spans (O(spans)),
+   * NOT the per-tag re-query that once made pills lag. The layout path is kept
+   * only as a fallback for ranges with no painted spans — e.g. a tag on a
+   * virtualized/off-screen page whose content isn't in the DOM yet — so those
+   * pills still get an approximate position instead of vanishing.
    */
   getRectsForRanges(
     ranges: Array<{ from: number; to: number }>
   ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
-    if (this.hasLayoutData()) {
-      return this.layoutRectsForRanges(ranges);
-    }
+    const domRects = this.domRectsForRanges(ranges);
+    if (!this.hasLayoutData()) return domRects;
+
+    // Only pay for the layout pass when some range had no painted spans.
+    if (!domRects.some((r) => r.length === 0)) return domRects;
+    const layoutRects = this.layoutRectsForRanges(ranges);
+    return domRects.map((r, i) => (r.length > 0 ? r : (layoutRects[i] ?? [])));
+  }
+
+  /**
+   * Per-range rects measured from the painted DOM via Range.getClientRects.
+   * Scans every `data-pm` span ONCE and slices each to the requested character
+   * range (tab spans contribute their full visual box). Coordinates are
+   * container-relative and unscaled (divided by zoom), matching
+   * {@link layoutRectsForRanges} so the two can be mixed per-range.
+   */
+  private domRectsForRanges(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
     const result = ranges.map(
       () => [] as Array<{ x: number; y: number; width: number; height: number }>
     );
