@@ -2051,9 +2051,17 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
               console.warn(`[PagedEditor] renderPages took ${Math.round(stepTime)}ms`);
             }
 
-            // Create and expose RenderedDomContext after DOM is painted
+            // Create and expose RenderedDomContext after DOM is painted.
+            // Pass the layout/blocks/measures so position mapping is computed
+            // from the layout engine (reliable, available immediately) rather
+            // than scanning the painted DOM per range — this removes the visible
+            // lag/stagger on template-variable pills, mirroring the caret overlay.
             if (onRenderedDomContextReady) {
-              const domContext = createRenderedDomContext(pagesContainerRef.current, zoom);
+              const domContext = createRenderedDomContext(pagesContainerRef.current, zoom, {
+                layout: newLayout,
+                blocks: newBlocks,
+                measures: newMeasures,
+              });
               onRenderedDomContextReady(domContext);
             }
           }

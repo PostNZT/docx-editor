@@ -7,6 +7,20 @@
  */
 
 import type { RenderedDomContext, PositionCoordinates } from './types';
+import { selectionToRects } from '@postnzt/docx-core/layout-bridge/selectionRects';
+import type { Layout, FlowBlock, Measure } from '@postnzt/docx-core/layout-engine/types';
+
+/**
+ * Optional layout data. When supplied, range→rect mapping is computed from the
+ * layout engine — reliable and available the instant layout completes, exactly
+ * like the caret/selection overlay — instead of scanning the painted DOM per
+ * range. The DOM path is kept as a fallback when this is absent.
+ */
+export interface RenderedDomLayoutData {
+  layout: Layout;
+  blocks: FlowBlock[];
+  measures: Measure[];
+}
 
 /**
  * Implementation of RenderedDomContext.
@@ -19,10 +33,52 @@ import type { RenderedDomContext, PositionCoordinates } from './types';
 export class RenderedDomContextImpl implements RenderedDomContext {
   public pagesContainer: HTMLElement;
   public zoom: number;
+  private layout?: Layout;
+  private blocks?: FlowBlock[];
+  private measures?: Measure[];
 
-  constructor(pagesContainer: HTMLElement, zoom: number = 1) {
+  constructor(pagesContainer: HTMLElement, zoom: number = 1, layoutData?: RenderedDomLayoutData) {
     this.pagesContainer = pagesContainer;
     this.zoom = zoom;
+    this.layout = layoutData?.layout;
+    this.blocks = layoutData?.blocks;
+    this.measures = layoutData?.measures;
+  }
+
+  /**
+   * Range→rect mapping computed from the layout engine (no per-range DOM scan,
+   * no dependence on a post-paint React tick). selectionToRects returns rects
+   * relative to the first page's content origin; we add the first-page →
+   * container offset (measured ONCE) so the result lands in the SAME
+   * pages-container-relative space the DOM getRectsForRange returns — callers
+   * (template overlay, sidebar) need no change. Mirrors how the selection/caret
+   * overlay is positioned (PagedEditor.updateSelectionOverlay).
+   */
+  private layoutRectsForRanges(
+    ranges: Array<{ from: number; to: number }>
+  ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
+    const { layout, blocks, measures } = this;
+    if (!layout || !blocks || !measures) return ranges.map(() => []);
+
+    const containerRect = this.pagesContainer.getBoundingClientRect();
+    const firstPage = this.pagesContainer.querySelector('.layout-page');
+    const firstPageRect = firstPage?.getBoundingClientRect();
+    const offsetX = firstPageRect ? (firstPageRect.left - containerRect.left) / this.zoom : 0;
+    const offsetY = firstPageRect ? (firstPageRect.top - containerRect.top) / this.zoom : 0;
+
+    return ranges.map(({ from, to }) => {
+      if (from === to) return [];
+      return selectionToRects(layout, blocks, measures, from, to).map((r) => ({
+        x: r.x + offsetX,
+        y: r.y + offsetY,
+        width: r.width,
+        height: r.height,
+      }));
+    });
+  }
+
+  private hasLayoutData(): boolean {
+    return Boolean(this.layout && this.blocks && this.measures);
   }
 
   /**
@@ -135,6 +191,9 @@ export class RenderedDomContextImpl implements RenderedDomContext {
     from: number,
     to: number
   ): Array<{ x: number; y: number; width: number; height: number }> {
+    if (this.hasLayoutData()) {
+      return this.layoutRectsForRanges([{ from, to }])[0] ?? [];
+    }
     const containerRect = this.pagesContainer.getBoundingClientRect();
     const rects: Array<{ x: number; y: number; width: number; height: number }> = [];
 
@@ -202,6 +261,9 @@ export class RenderedDomContextImpl implements RenderedDomContext {
   getRectsForRanges(
     ranges: Array<{ from: number; to: number }>
   ): Array<Array<{ x: number; y: number; width: number; height: number }>> {
+    if (this.hasLayoutData()) {
+      return this.layoutRectsForRanges(ranges);
+    }
     const result = ranges.map(
       () => [] as Array<{ x: number; y: number; width: number; height: number }>
     );
@@ -288,7 +350,8 @@ export class RenderedDomContextImpl implements RenderedDomContext {
  */
 export function createRenderedDomContext(
   pagesContainer: HTMLElement,
-  zoom: number = 1
+  zoom: number = 1,
+  layoutData?: RenderedDomLayoutData
 ): RenderedDomContext {
-  return new RenderedDomContextImpl(pagesContainer, zoom);
+  return new RenderedDomContextImpl(pagesContainer, zoom, layoutData);
 }
