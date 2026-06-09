@@ -17,27 +17,24 @@ import {
 } from './fontResolver';
 
 describe('resolveFontFamily — CSS-style font lists', () => {
-  test('quoted CSS list resolves to the primary font mapping', () => {
+  test('quoted CSS list unwraps to the primary font name', () => {
     const resolved = resolveFontFamily('"Times New Roman", Times, serif');
-    expect(resolved.hasGoogleEquivalent).toBe(true);
-    expect(resolved.googleFont).toBe('Tinos');
     expect(resolved.cssFallback).toContain('Times New Roman');
     expect(resolved.cssFallback).not.toContain('\\"');
   });
 
-  test('single-quoted CSS list resolves the same way', () => {
-    const resolved = resolveFontFamily(`'Times New Roman', Times, serif`);
-    expect(resolved.googleFont).toBe('Tinos');
+  test('Times New Roman renders the real font, never a web-font substitute', () => {
+    // Product decision: do not substitute Tinos for Times New Roman.
+    const resolved = resolveFontFamily('Times New Roman');
+    expect(resolved.googleFont).toBeNull();
+    expect(resolved.hasGoogleEquivalent).toBe(false);
+    expect(resolved.cssFallback).toContain('Times New Roman');
+    expect(resolved.cssFallback).not.toContain('Tinos');
   });
 
   test('Calibri inside a CSS list resolves to its mapping', () => {
     const resolved = resolveFontFamily(`Calibri, "Helvetica Neue", Arial, sans-serif`);
     expect(resolved.googleFont).toBe('Carlito');
-  });
-
-  test('plain font name (no list) still works unchanged', () => {
-    const resolved = resolveFontFamily('Times New Roman');
-    expect(resolved.googleFont).toBe('Tinos');
   });
 
   test('list of only generic families falls back gracefully', () => {
@@ -79,10 +76,15 @@ describe('resolveFontFamily — legal-document fonts', () => {
 
 describe('hasGoogleFontEquivalent / getGoogleFontEquivalent — CSS-list inputs', () => {
   test('hasGoogleFontEquivalent returns true for a quoted CSS list', () => {
-    expect(hasGoogleFontEquivalent('"Times New Roman", Times, serif')).toBe(true);
+    expect(hasGoogleFontEquivalent('Calibri, "Helvetica Neue", Arial, sans-serif')).toBe(true);
   });
 
   test('getGoogleFontEquivalent returns the mapped font for a quoted CSS list', () => {
-    expect(getGoogleFontEquivalent('"Times New Roman", Times, serif')).toBe('Tinos');
+    expect(getGoogleFontEquivalent('Calibri, "Helvetica Neue", Arial, sans-serif')).toBe('Carlito');
+  });
+
+  test('Times New Roman has no Google substitute', () => {
+    expect(hasGoogleFontEquivalent('Times New Roman')).toBe(false);
+    expect(getGoogleFontEquivalent('Times New Roman')).toBeNull();
   });
 });
