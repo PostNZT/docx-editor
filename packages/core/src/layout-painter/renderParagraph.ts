@@ -719,8 +719,17 @@ export function renderLine(
       // This forces the browser to justify even single-line blocks
       lineEl.style.textAlign = 'justify';
       lineEl.style.textAlignLast = 'justify';
-      // Set explicit width so browser knows how wide to justify to
-      lineEl.style.width = `${options.availableWidth}px`;
+      // Set explicit width so the browser knows how wide to justify to.
+      //
+      // A positive first-line indent (Word's 0.5" firstLine) is rendered as a
+      // text-indent (plain paragraphs) or padding-left + marker (list items) that
+      // pushes the line's start to the right. The line box is border-box, so that
+      // shift eats into the justify target and the first line stops short of — or
+      // overflows past — the right margin instead of filling to it like the
+      // continuation lines do. Add the indent back so the box still spans to the
+      // right margin and the first line justifies flush, matching Word/Google.
+      const firstLineIndentPx = Math.max(0, options.firstLineIndentPx ?? 0);
+      lineEl.style.width = `${options.availableWidth + firstLineIndentPx}px`;
     }
   }
 
