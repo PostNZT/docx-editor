@@ -57,18 +57,33 @@ export function TemplateHighlightOverlay({
 
     tags.forEach((tag, tagIndex) => {
       const tagRects = perTagRects[tagIndex] ?? [];
-      tagRects.forEach((rect, rectIndex) => {
-        rects.push({
-          tagId: tag.id,
-          tagType: tag.type,
-          varName: tag.name,
-          label: tag.name,
-          isFirstRect: rectIndex === 0,
-          x: rect.x + containerOffset.x,
-          y: rect.y + containerOffset.y,
-          width: rect.width,
-          height: rect.height,
-        });
+      if (tagRects.length === 0) return;
+
+      // ONE pill per tag. A tag whose text wraps across lines (e.g. a long name
+      // in a narrow table cell) yields one rect per line; rendering each as its
+      // own pill produced duplicate stacked buttons. Merge them into a single
+      // bounding box that covers every line the tag occupies.
+      let left = Infinity;
+      let top = Infinity;
+      let right = -Infinity;
+      let bottom = -Infinity;
+      for (const rect of tagRects) {
+        left = Math.min(left, rect.x);
+        top = Math.min(top, rect.y);
+        right = Math.max(right, rect.x + rect.width);
+        bottom = Math.max(bottom, rect.y + rect.height);
+      }
+
+      rects.push({
+        tagId: tag.id,
+        tagType: tag.type,
+        varName: tag.name,
+        label: tag.name,
+        isFirstRect: true,
+        x: left + containerOffset.x,
+        y: top + containerOffset.y,
+        width: right - left,
+        height: bottom - top,
       });
     });
 
@@ -142,10 +157,9 @@ export function TemplateHighlightOverlay({
               onSelect?.(rect.tagId);
             }}
           >
-            {/* Label every rect (not just the first): when a tag wraps across
-                lines it yields multiple rects, and blank continuation rects
-                read as broken empty buttons. The label is clipped per-rect via
-                CSS (text-overflow: ellipsis). */}
+            {/* One pill per tag (rects are merged in computeHighlights), so the
+                label always renders once. CSS grows the pill to fit the name
+                (width: max-content) and ellipsis-clips only past the cap. */}
             {rect.label}
           </div>
         );
