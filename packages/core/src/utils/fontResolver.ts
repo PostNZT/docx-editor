@@ -88,7 +88,13 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
     googleFont: null,
     category: 'serif',
     fallbackStack: ['Times New Roman', 'Liberation Serif', 'Times', 'serif'],
-    singleLineRatio: 1.1074, // (1825+443)/2048 — no sTypoLineGap
+    // Deliberate deviation from Word's usWin metric (1.1074): use the browser /
+    // Google-Docs line metric instead. Chrome (and therefore Google Docs, the
+    // visual reference here) lays out Times New Roman with a "normal" line height
+    // of ~1.15× — the font's hhea (ascent+descent+lineGap)/em — taller than
+    // Word's usWin height. Matching it makes paginated line spacing track Google
+    // Docs, at the cost of being marginally looser than Microsoft Word.
+    singleLineRatio: 1.15, // browser "normal" line-height ≈ (1825+443+~87)/2048
   },
   'courier new': {
     googleFont: 'Cousine',
