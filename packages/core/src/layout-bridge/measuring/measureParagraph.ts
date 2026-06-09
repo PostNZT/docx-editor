@@ -356,7 +356,18 @@ export function measureParagraph(
   const bodyContentWidth = Math.max(1, maxWidth - indentLeft - indentRight);
   // First line offset: positive = first-line indent (less space), negative = hanging (more space)
   // Subtracting gives correct width in both cases
-  const baseFirstLineWidth = Math.max(1, bodyContentWidth - firstLineOffset);
+  //
+  // List items paint a marker box at the start of the FIRST line (renderParagraph
+  // → renderListMarker, minWidth = hanging ?? firstLine ?? 24). The text flows
+  // after it, so reserve that same width here — otherwise the first line is
+  // measured as if the text owned the marker's space, packs marker-width too much
+  // text, and overflows the right margin (the wrapped lines, which carry no
+  // marker, stay correct). Keep in sync with renderListMarker's markerBoxWidth.
+  const markerReserve =
+    attrs?.listMarker && !attrs?.listMarkerHidden
+      ? (indent?.hanging ?? indent?.firstLine ?? 24)
+      : 0;
+  const baseFirstLineWidth = Math.max(1, bodyContentWidth - firstLineOffset - markerReserve);
 
   // Track cumulative height for floating zone calculations
   let cumulativeHeight = 0;
