@@ -124,8 +124,14 @@ export function TemplateHighlightOverlay({
             data-var-name={rect.varName}
             style={{
               left: rect.x,
+              // minWidth (not width) guarantees the pill fully covers the
+              // underlying [[…]] text (no raw-text bleed-through) while CSS
+              // `width: max-content` lets it grow to fit the variable name when
+              // the text is narrower than the label — e.g. a long name wrapped
+              // inside a narrow table cell, which would otherwise clip to an
+              // unreadable "vments_made_amou…".
+              minWidth: rect.width,
               top: rect.y,
-              width: rect.width,
               height: rect.height,
             }}
             onMouseEnter={() => onHover?.(rect.tagId)}
@@ -167,6 +173,12 @@ export const TEMPLATE_HIGHLIGHT_OVERLAY_STYLES = `
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  /* Grow to fit the label, but never narrower than the inline minWidth set above
+     (which covers the underlying text). Capped so an unusually long name can't
+     run off the page; only then does the ellipsis below apply. */
+  width: max-content;
+  max-width: 240px;
   padding: 0 4px;
   background: linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%) !important;
   color: #ffffff !important;

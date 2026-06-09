@@ -8,6 +8,7 @@
 
 import type { RenderedDomContext, PositionCoordinates } from './types';
 import { selectionToRects } from '@postnzt/docx-core/layout-bridge/selectionRects';
+import { getPageTop } from '@postnzt/docx-core/layout-bridge/hitTest';
 import type { Layout, FlowBlock, Measure } from '@postnzt/docx-core/layout-engine/types';
 
 /**
@@ -47,12 +48,21 @@ export class RenderedDomContextImpl implements RenderedDomContext {
 
   /**
    * Range→rect mapping computed from the layout engine (no per-range DOM scan,
-   * no dependence on a post-paint React tick). selectionToRects returns rects
-   * relative to the first page's content origin; we add the first-page →
-   * container offset (measured ONCE) so the result lands in the SAME
-   * pages-container-relative space the DOM getRectsForRange returns — callers
-   * (template overlay, sidebar) need no change. Mirrors how the selection/caret
-   * overlay is positioned (PagedEditor.updateSelectionOverlay).
+   * no dependence on a post-paint React tick).
+   *
+   * Each rect is anchored to its OWN page's real rendered position rather than
+   * assuming the layout engine's pageGap matches the painted page stacking.
+   * selectionToRects returns y in full-document layout space (the page top is
+   * baked in) plus the 0-based pageIndex; we subtract the layout page top to get
+   * a page-local offset, then add the MEASURED DOM top/left of that specific
+   * page. This removes cross-page drift (pills landing a line too high on later
+   * pages, where any pageGap/margin mismatch accumulated) and needs no pageGap
+   * assumption — the subtract/add cancels the model's own page top exactly.
+   *
+   * Vertically the rect hugs the glyph box (ascent+descent) at the glyph top,
+   * matching the caret overlay, which positions at fragment.y+lineOffset+pageTop
+   * with NO extra half-leading. The previous code centered the glyph box in the
+   * full line box, which pushed pills below the text in spaced paragraphs.
    */
   private layoutRectsForRanges(
     ranges: Array<{ from: number; to: number }>
@@ -61,24 +71,27 @@ export class RenderedDomContextImpl implements RenderedDomContext {
     if (!layout || !blocks || !measures) return ranges.map(() => []);
 
     const containerRect = this.pagesContainer.getBoundingClientRect();
-    const firstPage = this.pagesContainer.querySelector('.layout-page');
-    const firstPageRect = firstPage?.getBoundingClientRect();
-    const offsetX = firstPageRect ? (firstPageRect.left - containerRect.left) / this.zoom : 0;
-    const offsetY = firstPageRect ? (firstPageRect.top - containerRect.top) / this.zoom : 0;
+    const pageOrigins = Array.from(this.pagesContainer.querySelectorAll('.layout-page')).map(
+      (el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          left: (r.left - containerRect.left) / this.zoom,
+          top: (r.top - containerRect.top) / this.zoom,
+        };
+      }
+    );
+    const fallbackOrigin = pageOrigins[0] ?? { left: 0, top: 0 };
 
     return ranges.map(({ from, to }) => {
       if (from === to) return [];
       return selectionToRects(layout, blocks, measures, from, to).map((r) => {
-        // Hug the text: use the tight glyph height (ascent+descent) centered in
-        // the line box, not the full line height — otherwise pills look like
-        // oversized selection blocks (especially with large line spacing).
-        const tightHeight = r.glyphHeight ?? r.height;
-        const top = r.y + Math.max(0, (r.height - tightHeight) / 2);
+        const origin = pageOrigins[r.pageIndex] ?? fallbackOrigin;
+        const pageLocalY = r.y - getPageTop(layout, r.pageIndex);
         return {
-          x: r.x + offsetX,
-          y: top + offsetY,
+          x: origin.left + r.x,
+          y: origin.top + pageLocalY,
           width: r.width,
-          height: tightHeight,
+          height: r.glyphHeight ?? r.height,
         };
       });
     });
