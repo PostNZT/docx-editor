@@ -312,7 +312,12 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
       };
       runs.push(run);
     } else if (child.type.name === 'field') {
-      // Field node — convert to FieldRun for render-time substitution
+      // Field node — convert to FieldRun for render-time substitution.
+      // Carry the run formatting (font, size, bold, color, …) from the field's
+      // marks so the substituted value renders in the document font, not the
+      // painter default. Otherwise a DATE field like "April 8, 2026" falls back
+      // to Calibri while the surrounding "Dated:" text stays Times New Roman.
+      const formatting = extractRunFormatting(child.marks, theme);
       const ft = child.attrs.fieldType as string;
       const mappedType: FieldRun['fieldType'] =
         ft === 'PAGE'
@@ -325,6 +330,7 @@ function paragraphToRuns(node: PMNode, startPos: number, _options: ToFlowBlocksO
                 ? 'TIME'
                 : 'OTHER';
       const run: FieldRun = {
+        ...formatting,
         kind: 'field',
         fieldType: mappedType,
         fallback: (child.attrs.displayText as string) || '',
