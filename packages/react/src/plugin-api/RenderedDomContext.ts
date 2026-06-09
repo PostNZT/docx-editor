@@ -59,10 +59,12 @@ export class RenderedDomContextImpl implements RenderedDomContext {
    * pages, where any pageGap/margin mismatch accumulated) and needs no pageGap
    * assumption — the subtract/add cancels the model's own page top exactly.
    *
-   * Vertically the rect hugs the glyph box (ascent+descent) at the glyph top,
-   * matching the caret overlay, which positions at fragment.y+lineOffset+pageTop
-   * with NO extra half-leading. The previous code centered the glyph box in the
-   * full line box, which pushed pills below the text in spaced paragraphs.
+   * Vertically the rect hugs the glyph box (ascent+descent). The painter renders
+   * each line as a block of height=lineHeight with line-height=lineHeight, so the
+   * browser centers the glyph box within the line box. selectionToRects' y is the
+   * line-box TOP, so the painted text sits a half-leading lower — we add that
+   * half-leading so the pill lands ON the text rather than floating above it in
+   * spaced (1.5×/double) paragraphs.
    */
   private layoutRectsForRanges(
     ranges: Array<{ from: number; to: number }>
@@ -87,11 +89,13 @@ export class RenderedDomContextImpl implements RenderedDomContext {
       return selectionToRects(layout, blocks, measures, from, to).map((r) => {
         const origin = pageOrigins[r.pageIndex] ?? fallbackOrigin;
         const pageLocalY = r.y - getPageTop(layout, r.pageIndex);
+        const tightHeight = r.glyphHeight ?? r.height;
+        const halfLeading = Math.max(0, (r.height - tightHeight) / 2);
         return {
           x: origin.left + r.x,
-          y: origin.top + pageLocalY,
+          y: origin.top + pageLocalY + halfLeading,
           width: r.width,
-          height: r.glyphHeight ?? r.height,
+          height: tightHeight,
         };
       });
     });
