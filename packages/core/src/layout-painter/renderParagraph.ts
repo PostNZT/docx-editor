@@ -469,10 +469,13 @@ function renderFieldRun(run: FieldRun, doc: Document, context: RenderContext): H
       text = String(context.totalPages);
       break;
     case 'DATE':
-      text = new Date().toLocaleDateString();
+      // Prefer the document's cached field result (what Word and Google Docs
+      // show on open). A filing's date must not silently change to "today";
+      // only compute a live value when the field was never calculated.
+      if (!run.fallback?.trim()) text = new Date().toLocaleDateString();
       break;
     case 'TIME':
-      text = new Date().toLocaleTimeString();
+      if (!run.fallback?.trim()) text = new Date().toLocaleTimeString();
       break;
     // OTHER fields use fallback
   }
