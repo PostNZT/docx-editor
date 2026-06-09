@@ -136,7 +136,11 @@ export function TemplateHighlightOverlay({
               onSelect?.(rect.tagId);
             }}
           >
-            {rect.isFirstRect ? rect.label : ''}
+            {/* Label every rect (not just the first): when a tag wraps across
+                lines it yields multiple rects, and blank continuation rects
+                read as broken empty buttons. The label is clipped per-rect via
+                CSS (text-overflow: ellipsis). */}
+            {rect.label}
           </div>
         );
       })}

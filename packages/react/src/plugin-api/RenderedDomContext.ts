@@ -68,12 +68,19 @@ export class RenderedDomContextImpl implements RenderedDomContext {
 
     return ranges.map(({ from, to }) => {
       if (from === to) return [];
-      return selectionToRects(layout, blocks, measures, from, to).map((r) => ({
-        x: r.x + offsetX,
-        y: r.y + offsetY,
-        width: r.width,
-        height: r.height,
-      }));
+      return selectionToRects(layout, blocks, measures, from, to).map((r) => {
+        // Hug the text: use the tight glyph height (ascent+descent) centered in
+        // the line box, not the full line height — otherwise pills look like
+        // oversized selection blocks (especially with large line spacing).
+        const tightHeight = r.glyphHeight ?? r.height;
+        const top = r.y + Math.max(0, (r.height - tightHeight) / 2);
+        return {
+          x: r.x + offsetX,
+          y: top + offsetY,
+          width: r.width,
+          height: tightHeight,
+        };
+      });
     });
   }
 
