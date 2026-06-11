@@ -161,20 +161,22 @@ const FONT_MAPPINGS: Record<string, FontMapping> = {
 
   // Legal / court fonts. Century Schoolbook is the U.S. Supreme Court and
   // appellate-brief standard; Bookman Old Style is common in legal practice.
-  // Neither has a metric-compatible Google clone, so we fall back to Noto Serif
-  // for users without the font installed (most legal users have the real font
-  // via MS Office, in which case it renders directly).
   //
-  // singleLineRatio is left at the neutral default on purpose: the open URW
-  // clones (C059, URW Bookman) report inflated usWin metrics (~1.42 / ~1.32)
-  // that do NOT match Microsoft's real fonts, and we have no authoritative OS/2
-  // source for the proprietary versions. The default avoids asserting a wrong
-  // line height; refine later from the real font's (usWinAscent+usWinDescent)/upm.
+  // Century Schoolbook is mapped to Gelasio (a Google-hosted Georgia metric
+  // clone) and the locally-installed "Century Schoolbook" is deliberately NOT in
+  // the stack. The authentic font — and its open clone TeX Gyre Schola — render
+  // ~4-5% wider than the Century Schoolbook that Word-compatible viewers
+  // (TextMaker, Google Docs) substitute, which shifts line breaks vs what users
+  // see there. Georgia/Gelasio (~176px for "Case No. 24-16716-MAM" at 12pt) match
+  // the narrower viewer metrics, so a hyphenated case number wraps as a unit at
+  // the same column width. Gelasio loads everywhere via Google Fonts; Georgia
+  // (Win/Mac) and the platform serif are in-metric fallbacks. singleLineRatio
+  // matches Georgia's OS/2 height.
   'century schoolbook': {
-    googleFont: 'Noto Serif',
+    googleFont: 'Gelasio',
     category: 'serif',
-    fallbackStack: ['Century Schoolbook', 'Noto Serif', 'Georgia', 'serif'],
-    singleLineRatio: DEFAULT_SINGLE_LINE_RATIO,
+    fallbackStack: ['Gelasio', 'Georgia', 'serif'],
+    singleLineRatio: 1.1362, // 2327/2048 — Georgia/Gelasio usWin metric
   },
   'bookman old style': {
     googleFont: 'Noto Serif',

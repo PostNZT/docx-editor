@@ -271,16 +271,22 @@ function isEmptyTextRun(run: TextRun): boolean {
 }
 
 /**
- * Find word break points in text
- * Returns array of indices where words end (after space/punctuation)
+ * Find word break points in text.
+ * Returns indices where a line may wrap — after a space, a tab, or a hyphen.
+ *
+ * Word/Word-compatible engines (Word, TextMaker) break a hyphenated token at the
+ * hyphen, keeping the hyphen on the upper line: a case number "24-16716-MAM" that
+ * doesn't fit becomes "24-16716-" + "MAM", not the whole token wrapped down. We
+ * match that — breaking only at whitespace left an over-long hyphenated token on
+ * one line where Word splits it at the dash.
  */
 function findWordBreaks(text: string): number[] {
   const breaks: number[] = [];
 
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    // Break after space or certain punctuation
-    if (char === ' ' || char === '-' || char === '\t') {
+    // Break after a space, tab, or hyphen (the hyphen stays on the upper line).
+    if (char === ' ' || char === '\t' || char === '-') {
       breaks.push(i + 1);
     }
   }
@@ -558,13 +564,27 @@ export function measureParagraph(
       updateMaxFont(style);
 
       // Compute tab width: advance to the next tab stop position.
-      // OOXML tab stop positions are relative to the page margin edge,
-      // so we need to add the paragraph's left indent to currentLine.width
-      // (which is relative to the indented content area) to get the
-      // absolute position from the margin for correct tab stop matching.
+      // OOXML tab stop positions are relative to the page margin edge, so we
+      // convert currentLine.width (measured from THIS line's text origin) to a
+      // from-margin position by adding the origin's offset from the margin.
+      //
+      // That offset is the left indent for body lines, but the FIRST line is
+      // shifted by the (mutually exclusive) hanging/first-line indent: a hanging
+      // indent pulls the origin left (firstLineOffset < 0), a first-line indent
+      // pushes it right (> 0). Omitting firstLineOffset resolved tab stops on a
+      // hanging first line ~hanging px too far left, so the measurer packed one
+      // extra word before the right indent and the painter then drew it
+      // overflowing the margin (e.g. a case-number caption kept "…24-16716-MAM"
+      // on line 1 where Word/Google wrap it to the next line).
       const tabStops = attrs?.tabs;
       const indentLeftPx = indent?.left ?? 0;
-      const currentPos = currentLine.width + indentLeftPx + (currentLine.leftOffset ?? 0);
+      // List first lines reserve the hanging space for the marker box, so their
+      // text origin sits at indentLeft (not pulled left); only plain hanging/
+      // first-line indents shift the tab origin.
+      const isFirstLine = lines.length === 0;
+      const originOffset =
+        isFirstLine && !attrs?.listMarker ? indentLeftPx + firstLineOffset : indentLeftPx;
+      const currentPos = currentLine.width + originOffset + (currentLine.leftOffset ?? 0);
       const tabWidth = computeTabWidth(currentPos, tabStops);
 
       if (currentLine.width + tabWidth > currentLine.availableWidth + WIDTH_TOLERANCE) {
