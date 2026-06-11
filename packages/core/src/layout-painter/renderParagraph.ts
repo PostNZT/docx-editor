@@ -697,6 +697,22 @@ export function renderLine(
   // Get runs for this line
   const runsForLine = sliceRunsForLine(block, line);
 
+  // Word (and Word-compatible viewers) do not paint underline/strikethrough
+  // beneath trailing whitespace at the end of a line. A source run that is just
+  // an underlined space — e.g. a leftover after "Chapter 13 " in a caption — would
+  // otherwise draw a stray mark at the right margin. Suppress decorations on the
+  // trailing whitespace-only TEXT runs of the line. Tabs are intentionally NOT
+  // suppressed: an underlined trailing tab is a deliberate signature/rule line.
+  const decorationSuppressed = new Set<number>();
+  for (let i = runsForLine.length - 1; i >= 0; i--) {
+    const r = runsForLine[i];
+    if (isTextRun(r) && (r.text ?? '').trim() === '') {
+      decorationSuppressed.add(i);
+    } else {
+      break;
+    }
+  }
+
   // Handle empty lines
   if (runsForLine.length === 0) {
     const emptySpan = doc.createElement('span');
@@ -805,7 +821,12 @@ export function renderLine(
       // Update X position
       currentX += tabResult.width;
     } else if (isTextRun(run)) {
-      const runEl = renderTextRun(run, doc, options?.context?.resolvedCommentIds);
+      // Drop underline/strike on trailing whitespace at line end (Word parity).
+      const runToRender =
+        decorationSuppressed.has(i) && (run.underline || run.strike)
+          ? { ...run, underline: undefined, strike: false }
+          : run;
+      const runEl = renderTextRun(runToRender, doc, options?.context?.resolvedCommentIds);
 
       // For highlighted runs, extend background to fill the full line height.
       // Inline elements' background only covers the content area (font ascent+descent),

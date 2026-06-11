@@ -45,11 +45,16 @@ describe('resolveFontFamily — CSS-style font lists', () => {
 });
 
 describe('resolveFontFamily — legal-document fonts', () => {
-  test('Century Schoolbook resolves with a serif web-font fallback', () => {
+  test('Century Schoolbook resolves to a narrower in-metric serif (Gelasio)', () => {
+    // The authentic font (and TeX Gyre Schola) render wider than the Century
+    // Schoolbook that Word-compatible viewers substitute, shifting line breaks.
+    // We map to Gelasio (a Georgia metric clone) and intentionally drop the local
+    // "Century Schoolbook" so the narrower, viewer-matching metrics are used.
     const resolved = resolveFontFamily('Century Schoolbook');
     expect(resolved.hasGoogleEquivalent).toBe(true);
-    expect(resolved.googleFont).toBe('Noto Serif');
-    expect(resolved.cssFallback).toContain('Century Schoolbook');
+    expect(resolved.googleFont).toBe('Gelasio');
+    expect(resolved.cssFallback).toContain('Gelasio');
+    expect(resolved.cssFallback).not.toContain('Century Schoolbook');
     expect(resolved.cssFallback.toLowerCase()).toContain('serif');
   });
 
@@ -70,7 +75,7 @@ describe('resolveFontFamily — legal-document fonts', () => {
 
   test('a Century Schoolbook CSS stack (as a picker preview) unwraps to the mapping', () => {
     const resolved = resolveFontFamily('"Century Schoolbook", "Noto Serif", Georgia, serif');
-    expect(resolved.googleFont).toBe('Noto Serif');
+    expect(resolved.googleFont).toBe('Gelasio');
   });
 });
 

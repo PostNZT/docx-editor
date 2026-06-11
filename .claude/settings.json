@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node d:/tmp/pill-diag.mjs)",
+      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\) ? 'playwright OK' : 'no'\\)\")",
+      "Bash(node -e \"console.log\\(require.resolve\\('@playwright/test'\\)\\)\")",
+      "Bash(sed -i \"s/from 'playwright'/from '@playwright\\\\/test'/\" d:/PERSONAL/docx-editor/pill-diag.mjs)",
+      "Bash(node d:/PERSONAL/docx-editor/pill-diag.mjs)",
+      "Bash(bun d:/tmp/build-tpl-docx.mjs)",
+      "Bash(node -e ' *)",
+      "Bash(node d:/PERSONAL/docx-editor/pill-diag2.mjs)",
+      "Bash(set -e)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('root scripts:'\\); for\\(const[k,v] of Object.entries\\(p.scripts||{}\\)\\) if\\(/dev|start|vite/i.test\\(k\\)\\) console.log\\('  '+k+': '+v\\);\")",
+      "Bash(node -e \"const p=require\\('./examples/vite/package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,1\\)\\);\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"dev server: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(grep -rniE \"hyphen|break.*word|word.*break|breakpoint|\\\\.split\\\\\\(|/\\\\\\\\s|breakable|canBreak\" packages/core/src/layout-bridge/measuring/measureParagraph.ts)",
+      "Bash(curl -sS --max-time 20 \"https://registry.npmjs.org/-/v1/search?text=tex-gyre-schola&size=10\")",
+      "Bash(curl -sS --max-time 20 \"https://registry.npmjs.org/-/v1/search?text=schola&size=15\")",
+      "Bash(curl -sS --max-time 25 \"https://data.jsdelivr.com/v1/package/npm/typeface-tex-gyre-schola@latest/flat\")",
+      "Bash(curl -sS --max-time 25 \"https://data.jsdelivr.com/v1/packages/npm/typeface-tex-gyre-schola@1.1.13\" -o tree.json -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS --max-time 25 \"https://cdn.jsdelivr.net/npm/typeface-tex-gyre-schola@1.1.13/index.css\")",
+      "Bash(npx playwright *)",
+      "Bash(node -e \"console.log\\(require.resolve\\('jszip'\\)\\)\")",
+      "Bash(unzip -l bug.docx)",
+      "Bash(unzip -p bug.docx)",
+      "Bash(unzip -p bug.docx word/fontTable.xml)",
+      "Bash(mkdir -p /d/tmp/tgs && cp /tmp/tgs/*.otf /d/tmp/tgs/ && ls -la /d/tmp/tgs/ | cat)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git --no-pager diff packages/core/src/layout-bridge/measuring/measureParagraph.ts packages/core/src/utils/fontResolver.ts)",
+      "Bash(git --no-pager diff packages/core/src/layout-painter/renderParagraph.ts)",
+      "Bash(echo \"=== exit $? ===\")",
+      "Bash(git --no-pager log --oneline -1)"
+    ],
+    "additionalDirectories": ["\\tmp", "\\tmp\\tgs"]
+  }
+}
