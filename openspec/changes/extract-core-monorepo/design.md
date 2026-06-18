@@ -1,6 +1,6 @@
 ## Context
 
-The editor is currently a single npm package (`@PostNZT/docx-js-editor`) with ~80% framework-agnostic code and ~20% React UI. The codebase already has clean internal boundaries — separate entry points (`core.ts`, `headless.ts`, `react.ts`, `ui.ts`) and framework-agnostic directories (`src/docx/`, `src/types/`, `src/prosemirror/`, `src/layout-engine/`, `src/layout-painter/`, `src/layout-bridge/`). A community contributor wants to build a Vue wrapper, which requires the core to be importable without React dependencies.
+The editor is currently a single npm package (`@PostNZT/docx-editor`) with ~80% framework-agnostic code and ~20% React UI. The codebase already has clean internal boundaries — separate entry points (`core.ts`, `headless.ts`, `react.ts`, `ui.ts`) and framework-agnostic directories (`src/docx/`, `src/types/`, `src/prosemirror/`, `src/layout-engine/`, `src/layout-painter/`, `src/layout-bridge/`). A community contributor wants to build a Vue wrapper, which requires the core to be importable without React dependencies.
 
 Current state:
 
@@ -16,7 +16,7 @@ Current state:
 **Goals:**
 
 - Extract framework-agnostic core into `@PostNZT/docx-core` with zero React dependencies
-- Keep `@PostNZT/docx-js-editor` as the React UI package (preserves npm stats, no migration for existing users)
+- Keep `@PostNZT/docx-editor` as the React UI package (preserves npm stats, no migration for existing users)
 - Use Bun workspaces for monorepo management (already using Bun as runtime)
 - Enable community Vue/Svelte wrappers that depend only on `@PostNZT/docx-core`
 - Maintain a single repo, single CI pipeline
@@ -32,7 +32,7 @@ Current state:
 
 ### 1. Two packages, not more
 
-**Decision:** Split into exactly `@PostNZT/docx-core` and `@PostNZT/docx-js-editor` (React).
+**Decision:** Split into exactly `@PostNZT/docx-core` and `@PostNZT/docx-editor` (React).
 
 **Rationale:** More packages (separate layout, prosemirror, UI packages) adds versioning complexity without clear benefit. The Vue contributor needs one clean core dependency. Two packages is the minimum viable split.
 
@@ -48,7 +48,7 @@ Current state:
 
 ### 3. Keep existing package name for React
 
-**Decision:** `@PostNZT/docx-js-editor` stays as the React package name. No rename.
+**Decision:** `@PostNZT/docx-editor` stays as the React package name. No rename.
 
 **Rationale:** Preserves npm download stats, existing users don't need to migrate, no deprecation dance.
 
@@ -68,7 +68,7 @@ Current state:
 - `src/mcp/` — MCP server tools
 - Entry points: `core.ts`, `headless.ts`
 
-**React (`@PostNZT/docx-js-editor`):**
+**React (`@PostNZT/docx-editor`):**
 
 - `src/components/` — React UI components (toolbar, dialogs, pickers)
 - `src/hooks/` — React hooks
@@ -117,7 +117,7 @@ interface EditorPluginCore<TState = any> {
 }
 ```
 
-**React adapter (`@PostNZT/docx-js-editor`):**
+**React adapter (`@PostNZT/docx-editor`):**
 
 ```typescript
 interface ReactEditorPlugin<TState = any> extends EditorPluginCore<TState> {

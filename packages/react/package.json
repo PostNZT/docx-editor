@@ -1,5 +1,5 @@
 {
-  "name": "@postnzt/docx-js-editor",
+  "name": "@postnzt/docx-editor",
   "version": "0.4.4",
   "description": "A browser-based DOCX template editor with variable insertion support",
   "main": "./dist/index.js",

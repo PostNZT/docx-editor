@@ -25,7 +25,7 @@ export default defineConfig(async () => {
         // Resolve package imports to source for live development
         // Order matters: more-specific prefixes before less-specific ones
         {
-          find: '@postnzt/docx-js-editor',
+          find: '@postnzt/docx-editor',
           replacement: path.join(monorepoRoot, 'packages/react/src/index.ts'),
         },
         {

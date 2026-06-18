@@ -46,7 +46,7 @@ The `@PostNZT/docx-core` package SHALL export the `PanelConfig` type (position, 
 
 ### Requirement: ReactEditorPlugin extends EditorPluginCore
 
-The `@PostNZT/docx-js-editor` package SHALL export a `ReactEditorPlugin` interface that extends `EditorPluginCore` with React-specific fields: `Panel` (React.ComponentType) and `renderOverlay` (returns ReactNode).
+The `@PostNZT/docx-editor` package SHALL export a `ReactEditorPlugin` interface that extends `EditorPluginCore` with React-specific fields: `Panel` (React.ComponentType) and `renderOverlay` (returns ReactNode).
 
 #### Scenario: Existing React plugins remain compatible
 
@@ -61,7 +61,7 @@ The `@PostNZT/docx-js-editor` package SHALL export a `ReactEditorPlugin` interfa
 
 ### Requirement: ReactPluginHost renders ReactEditorPlugin panels and overlays
 
-The `@PostNZT/docx-js-editor` package SHALL contain a `PluginHost` (or `ReactPluginHost`) component that accepts `ReactEditorPlugin[]` and renders panels/overlays using React.
+The `@PostNZT/docx-editor` package SHALL contain a `PluginHost` (or `ReactPluginHost`) component that accepts `ReactEditorPlugin[]` and renders panels/overlays using React.
 
 #### Scenario: PluginHost manages plugin lifecycle
 

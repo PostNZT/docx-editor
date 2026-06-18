@@ -4,7 +4,7 @@ import {
   type DocxEditorRef,
   PluginHost,
   createEmptyDocument,
-} from '@postnzt/docx-js-editor';
+} from '@postnzt/docx-editor';
 import { wordCountPlugin } from './wordCountPlugin';
 
 export function App() {

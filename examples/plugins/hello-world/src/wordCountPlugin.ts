@@ -5,7 +5,7 @@
  * and displays them in a collapsible right-hand panel.
  */
 
-import type { EditorPlugin, PluginPanelProps } from '@postnzt/docx-js-editor';
+import type { EditorPlugin, PluginPanelProps } from '@postnzt/docx-editor';
 import React from 'react';
 
 // -- Plugin state -----------------------------------------------------------

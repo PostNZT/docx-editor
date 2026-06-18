@@ -79,15 +79,15 @@ The `@PostNZT/docx-core` package SHALL export utility functions for color resolu
 
 ### Requirement: React package re-exports core
 
-The `@PostNZT/docx-js-editor` main entry point SHALL re-export everything from `@PostNZT/docx-core` for backwards compatibility.
+The `@PostNZT/docx-editor` main entry point SHALL re-export everything from `@PostNZT/docx-core` for backwards compatibility.
 
 #### Scenario: Existing imports continue working
 
-- **WHEN** an existing user imports from `@PostNZT/docx-js-editor`
+- **WHEN** an existing user imports from `@PostNZT/docx-editor`
 - **THEN** all previously available exports SHALL still be available
 - **AND** no import paths SHALL break
 
 #### Scenario: Subpath exports preserved
 
-- **WHEN** an existing user imports from `@PostNZT/docx-js-editor/core` or `@PostNZT/docx-js-editor/headless`
+- **WHEN** an existing user imports from `@PostNZT/docx-editor/core` or `@PostNZT/docx-editor/headless`
 - **THEN** those imports SHALL continue to work (re-exporting from `@PostNZT/docx-core`)

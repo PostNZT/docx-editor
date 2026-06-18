@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@postnzt/docx-js-editor"><img src="https://img.shields.io/npm/v/@postnzt/docx-js-editor.svg?style=flat-square&color=00C853" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/@postnzt/docx-js-editor"><img src="https://img.shields.io/npm/dm/@postnzt/docx-js-editor.svg?style=flat-square&color=00C853" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/@postnzt/docx-editor"><img src="https://img.shields.io/npm/v/@postnzt/docx-editor.svg?style=flat-square&color=00C853" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@postnzt/docx-editor"><img src="https://img.shields.io/npm/dm/@postnzt/docx-editor.svg?style=flat-square&color=00C853" alt="npm downloads" /></a>
   <a href="https://github.com/PostNZT/docx-editor/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square&color=00C853" alt="license" /></a>
   <a href="https://docx-editor.dev/editor"><img src="https://img.shields.io/badge/Live_Demo-00C853?style=flat-square&logo=vercel&logoColor=white" alt="Live Demo" /></a>
   <a href="https://www.docx-editor.dev/docs"><img src="https://img.shields.io/badge/Docs-00C853?style=flat-square&logo=readthedocs&logoColor=white" alt="Documentation" /></a>
@@ -26,13 +26,13 @@ Open-source WYSIWYG DOCX editor for the browser. No server required. **[Live dem
 ## Quick Start
 
 ```bash
-npm install @postnzt/docx-js-editor
+npm install @postnzt/docx-editor
 ```
 
 ```tsx
 import { useRef } from 'react';
-import { DocxEditor, type DocxEditorRef } from '@postnzt/docx-js-editor';
-import '@postnzt/docx-js-editor/styles.css';
+import { DocxEditor, type DocxEditorRef } from '@postnzt/docx-editor';
+import '@postnzt/docx-editor/styles.css';
 
 function Editor({ file }: { file: ArrayBuffer }) {
   const editorRef = useRef<DocxEditorRef>(null);
@@ -44,15 +44,15 @@ function Editor({ file }: { file: ArrayBuffer }) {
 
 ## Packages
 
-| Package                                     | Description                                                  |
-| ------------------------------------------- | ------------------------------------------------------------ |
-| [`@postnzt/docx-js-editor`](packages/react) | React UI — toolbar, paged editor, plugins. **Install this.** |
-| [`@postnzt/docx-editor-vue`](packages/vue)  | Vue.js scaffold — contributions welcome                      |
+| Package                                    | Description                                                  |
+| ------------------------------------------ | ------------------------------------------------------------ |
+| [`@postnzt/docx-editor`](packages/react)   | React UI — toolbar, paged editor, plugins. **Install this.** |
+| [`@postnzt/docx-editor-vue`](packages/vue) | Vue.js scaffold — contributions welcome                      |
 
 ## Plugins
 
 ```tsx
-import { DocxEditor, PluginHost, templatePlugin } from '@postnzt/docx-js-editor';
+import { DocxEditor, PluginHost, templatePlugin } from '@postnzt/docx-editor';
 
 <PluginHost plugins={[templatePlugin]}>
   <DocxEditor documentBuffer={file} />
