@@ -55,8 +55,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      id-token: write
+      contents: write # create tags + GitHub Releases
+      issues: write # semantic-release comments on resolved issues
+      pull-requests: write # semantic-release comments on released PRs
+      id-token: write # npm provenance (OIDC)
     concurrency:
       group: release-main
       cancel-in-progress: false
@@ -64,8 +66,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
-          persist-credentials: true
+          fetch-depth: 0 # full history so commit analysis sees every commit
+          persist-credentials: false # semantic-release uses GITHUB_TOKEN for git
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -84,96 +86,14 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Auto-version from conventional commits, publish, tag, and release
+      # semantic-release derives the version from Conventional Commits, publishes
+      # @postnzt/docx-editor (packages/react) to npm with provenance, then tags and
+      # creates the GitHub Release. Config lives in .releaserc.json. The vX.Y.Z git
+      # tags are the source of truth for the last released version, so nothing is
+      # committed back to the repo.
+      - name: Release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          semver_bin="$GITHUB_WORKSPACE/node_modules/.bin/semver"
-
-          # Each published package versions independently. Its release history is
-          # the npm "latest" version (source of truth, so this is idempotent and
-          # needs no version commit). The bump is derived from the Conventional
-          # Commits since that version's tag that touch the package OR the shared
-          # packages/core (both bundle core at build time).
-          bumped=()
-          for pkg_dir in packages/react packages/agent-use; do
-            name=$(node -p "require('./$pkg_dir/package.json').name")
-            npm_ver=$(npm view "$name" version 2>/dev/null || echo "")
-            base="${npm_ver:-0.0.0}"
-            base_tag="v$base"
-
-            if git rev-parse -q --verify "refs/tags/$base_tag" >/dev/null 2>&1; then
-              range="$base_tag..HEAD"
-            else
-              range="HEAD"   # first release: consider full history
-            fi
-
-            subjects=$(git log --no-merges --format='%s' "$range" -- "$pkg_dir" packages/core || true)
-            bodies=$(git log --no-merges --format='%b' "$range" -- "$pkg_dir" packages/core || true)
-
-            bump=""
-            if printf '%s\n' "$subjects" | grep -qE '^[a-z]+(\([^)]+\))?!:' \
-               || printf '%s\n' "$bodies" | grep -qE 'BREAKING[ -]CHANGE'; then
-              bump=major
-            elif printf '%s\n' "$subjects" | grep -qE '^feat(\([^)]+\))?:'; then
-              bump=minor
-            elif printf '%s\n' "$subjects" | grep -qE '^(fix|perf|revert)(\([^)]+\))?:'; then
-              bump=patch
-            fi
-
-            if [ -z "$bump" ]; then
-              echo "No releasable commits for $name since $base_tag — skipping"
-              continue
-            fi
-
-            next=$("$semver_bin" "$base" -i "$bump")
-            tag="v$next"
-            echo "$name: $base -> $next ($bump)"
-
-            # Idempotency guards: never republish or clobber an existing tag.
-            if [ -n "$npm_ver" ] && ! "$semver_bin" "$next" -r ">$npm_ver" >/dev/null; then
-              echo "Computed $next is not greater than npm $npm_ver — skipping"
-              continue
-            fi
-            if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
-              echo "Tag $tag already exists — skipping"
-              continue
-            fi
-
-            # Write the version into the runner's package.json for the publish
-            # (not committed; npm is the source of truth).
-            node -e "const f='$pkg_dir/package.json',j=require('./'+f);j.version='$next';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
-
-            ( cd "$pkg_dir" && npm publish --provenance --access public )
-
-            git tag -a "$tag" -m "$name@$next"
-            git push origin "$tag"
-
-            notes="Published to npm: https://www.npmjs.com/package/$name/v/$next"
-            if [ "$pkg_dir" = "packages/react" ]; then
-              gh release create "$tag" --title "$tag" --notes "$notes" --latest
-            else
-              gh release create "$tag" --title "$tag" --notes "$notes"
-            fi
-            bumped+=("$pkg_dir")
-          done
-
-          if [ ${#bumped[@]} -eq 0 ]; then
-            echo "No packages released."
-            exit 0
-          fi
-
-          # Best-effort: sync the bumped versions back to main so package.json
-          # stays accurate. npm/tags remain the source of truth, so a blocked
-          # push (e.g. branch protection) does not break the release.
-          for d in "${bumped[@]}"; do git add "$d/package.json"; done
-          git commit -m "chore(release): version packages [skip ci]" || true
-          git push origin "HEAD:${GITHUB_REF_NAME}" || \
-            echo "Could not push version bump (branch protection?); npm + tags remain authoritative."
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npx semantic-release
