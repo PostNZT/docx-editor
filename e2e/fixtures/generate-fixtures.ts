@@ -340,6 +340,66 @@ async function generateComplexStylesDocx(): Promise<void> {
 }
 
 /**
+ * Generate legal-caption.docx
+ *
+ * Sanitized reproduction of a bankruptcy "Certificate of Service" caption
+ * (fake debtor name and case number; no private content). The layout-driving
+ * structure is preserved EXACTLY from the source document:
+ *   - one left tab stop at 5039 twips
+ *   - a hanging indent (left=720, hanging=720) so the first line starts at the
+ *     margin and wrapped lines indent 0.5"
+ *   - a right indent of 2177 twips that narrows the line
+ *   - page margins left=1440 / right=1080 (so the wrap column matches the source)
+ *   - Times New Roman 12pt throughout
+ *
+ * Faithful rendering (Word/Google/Pages) wraps the hyphenated case number at the
+ * dash: "Case No. 00-00000-" sits on line 1 at the 5039 tab stop and "MAM Debtor."
+ * wraps to line 2, with "Chapter 13" landing at the same 5039 stop. A regression
+ * in tab-stop origin or hyphen line-breaking (see commit 54aa655) forces the case
+ * number flush to the right margin and keeps "…00-00000-MAM" on one line.
+ */
+async function generateLegalCaptionDocx(): Promise<void> {
+  // Identical run properties for every run (Times New Roman, 12pt).
+  const rpr =
+    '<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>';
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:pPr><w:spacing w:before="241"/></w:pPr>
+      <w:r>${rpr}<w:t>In re:</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:tabs><w:tab w:val="left" w:pos="5039"/></w:tabs>
+        <w:spacing w:line="530" w:lineRule="atLeast"/>
+        <w:ind w:left="720" w:right="2177" w:hanging="720"/>
+      </w:pPr>
+      <w:r>${rpr}<w:t>JANE ALEXANDRA DOE,</w:t></w:r>
+      <w:r>${rpr}<w:tab/></w:r>
+      <w:r>${rpr}<w:t>Case No. 00-00000-MAM Debtor.</w:t></w:r>
+      <w:r>${rpr}<w:tab/></w:r>
+      <w:r>${rpr}<w:t xml:space="preserve">Chapter 13 </w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:spacing w:line="530" w:lineRule="atLeast"/>
+        <w:ind w:left="720" w:right="2177" w:hanging="720"/>
+      </w:pPr>
+      <w:r>${rpr}<w:t>_______________________________/</w:t></w:r>
+    </w:p>
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1354" w:right="1080" w:bottom="936" w:left="1440" w:header="0" w:footer="763" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+  await createDocx(documentXml, 'legal-caption.docx');
+}
+
+/**
  * Main function
  */
 async function main(): Promise<void> {
@@ -349,6 +409,7 @@ async function main(): Promise<void> {
   await generateStyledContentDocx();
   await generateWithTablesDocx();
   await generateComplexStylesDocx();
+  await generateLegalCaptionDocx();
 
   console.log('\nAll fixtures generated successfully!');
 }
