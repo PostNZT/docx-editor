@@ -1,11 +1,11 @@
 /**
- * @postnzt/docx-js-editor/react
+ * @postnzt/docx-editor/react
  *
  * React entry point — DocxEditor component and renderAsync.
  *
  * @example
  * ```tsx
- * import { DocxEditor } from '@postnzt/docx-js-editor/react';
+ * import { DocxEditor } from '@postnzt/docx-editor/react';
  * ```
  */
 

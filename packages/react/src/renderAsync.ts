@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```ts
- * import { renderAsync } from '@postnzt/docx-js-editor';
+ * import { renderAsync } from '@postnzt/docx-editor';
  *
  * const editor = await renderAsync(docxBlob, document.getElementById('container'), {
  *   readOnly: false,

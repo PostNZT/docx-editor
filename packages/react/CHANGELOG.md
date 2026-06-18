@@ -1,4 +1,4 @@
-# @PostNZT/docx-js-editor
+# @PostNZT/docx-editor
 
 ## 0.0.33
 

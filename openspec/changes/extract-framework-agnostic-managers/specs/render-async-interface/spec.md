@@ -16,7 +16,7 @@ The `@PostNZT/docx-core` package SHALL export an `EditorHandle` interface defini
 
 ### Requirement: React renderAsync implements EditorHandle
 
-The `@PostNZT/docx-js-editor` package SHALL export a `renderAsync(input, container, options): Promise<EditorHandle>` function that mounts a React editor into a DOM element.
+The `@PostNZT/docx-editor` package SHALL export a `renderAsync(input, container, options): Promise<EditorHandle>` function that mounts a React editor into a DOM element.
 
 #### Scenario: Mount editor imperatively with React
 

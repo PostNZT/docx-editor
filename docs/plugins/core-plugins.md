@@ -12,7 +12,7 @@ src/headless.ts   → Headless API (Node.js, no DOM needed)
 The headless API gives you `DocumentAgent`, parsers, serializers, and template processing — everything you need to manipulate DOCX files programmatically in Node.js. No browser, no React, no ProseMirror.
 
 ```ts
-import { DocumentAgent, parseDocx, processTemplate } from '@PostNZT/docx-js-editor/headless';
+import { DocumentAgent, parseDocx, processTemplate } from '@PostNZT/docx-editor/headless';
 ```
 
 **CorePlugins** extend the headless API with custom command handlers. They're the server-side equivalent of EditorPlugins.
@@ -31,7 +31,7 @@ If you need UI panels, overlays, or ProseMirror decorations, use an [EditorPlugi
 `DocumentAgent` is the main entry point for headless document manipulation:
 
 ```ts
-import { DocumentAgent } from '@PostNZT/docx-js-editor/headless';
+import { DocumentAgent } from '@PostNZT/docx-editor/headless';
 import fs from 'fs';
 
 // Load a DOCX file
@@ -62,7 +62,7 @@ fs.writeFileSync('output.docx', Buffer.from(output));
 
 ```ts
 // app/api/fill-template/route.ts
-import { processTemplate } from '@PostNZT/docx-js-editor/headless';
+import { processTemplate } from '@PostNZT/docx-editor/headless';
 
 export async function POST(req: Request) {
   const formData = await req.formData();
@@ -83,11 +83,7 @@ export async function POST(req: Request) {
 ### Template Processing Utilities
 
 ```ts
-import {
-  processTemplate,
-  getTemplateTags,
-  validateTemplate,
-} from '@PostNZT/docx-js-editor/headless';
+import { processTemplate, getTemplateTags, validateTemplate } from '@PostNZT/docx-editor/headless';
 
 // Get all template variables from a DOCX
 const tags = await getTemplateTags(buffer);
@@ -155,8 +151,8 @@ interface PluginCommand {
 Example — a plugin that adds watermark text:
 
 ```ts
-import type { CorePlugin, PluginCommand } from '@PostNZT/docx-js-editor';
-import type { Document } from '@PostNZT/docx-js-editor';
+import type { CorePlugin, PluginCommand } from '@PostNZT/docx-editor';
+import type { Document } from '@PostNZT/docx-editor';
 
 const watermarkPlugin: CorePlugin = {
   id: 'watermark',
@@ -174,7 +170,7 @@ const watermarkPlugin: CorePlugin = {
 Use it:
 
 ```ts
-import { pluginRegistry } from '@PostNZT/docx-js-editor';
+import { pluginRegistry } from '@PostNZT/docx-editor';
 
 pluginRegistry.register(watermarkPlugin);
 
@@ -189,7 +185,7 @@ if (handler) {
 The global `pluginRegistry` manages all CorePlugins:
 
 ```ts
-import { pluginRegistry } from '@PostNZT/docx-js-editor';
+import { pluginRegistry } from '@PostNZT/docx-editor';
 
 // Register
 pluginRegistry.register(myPlugin);
@@ -203,7 +199,7 @@ pluginRegistry.getCommandTypes(); // ['addWatermark']
 pluginRegistry.unregister('watermark');
 
 // Batch registration
-import { registerPlugins } from '@PostNZT/docx-js-editor';
+import { registerPlugins } from '@PostNZT/docx-editor';
 registerPlugins([pluginA, pluginB]);
 ```
 
@@ -215,7 +211,7 @@ The built-in `docxtemplaterPlugin` in `src/core-plugins/docxtemplater/` is a ful
 - Lazy dependency validation — `processTemplate` checks for `docxtemplater`/`pizzip` at call time
 
 ```ts
-import { pluginRegistry, docxtemplaterPlugin } from '@PostNZT/docx-js-editor';
+import { pluginRegistry, docxtemplaterPlugin } from '@PostNZT/docx-editor';
 
 pluginRegistry.register(docxtemplaterPlugin);
 

@@ -1,6 +1,6 @@
 ## Context
 
-This change follows `extract-core-monorepo`, which splits the codebase into `@PostNZT/docx-core` and `@PostNZT/docx-js-editor` (React). After that split, the package boundary is clean but the React package still contains ~50% framework-agnostic business logic embedded in React components and hooks. Specifically:
+This change follows `extract-core-monorepo`, which splits the codebase into `@PostNZT/docx-core` and `@PostNZT/docx-editor` (React). After that split, the package boundary is clean but the React package still contains ~50% framework-agnostic business logic embedded in React components and hooks. Specifically:
 
 - `PagedEditor.tsx` (2080 lines) — coordinates PM state, layout engine, layout painter, selection overlays, column resizing, image interaction. Uses 50+ `useRef`/`useState`.
 - `DocxEditor.tsx` (1400 lines) — manages document parsing, font loading, zoom, dialog state, extension manager, agent commands. Orchestrates everything.
@@ -27,7 +27,7 @@ A Vue contributor would need to reimplement all of this logic. The goal is to ex
 
 - Rewriting PagedEditor or DocxEditor from scratch (incremental extraction)
 - Building the Vue composables (community contribution)
-- Changing any public API of `@PostNZT/docx-js-editor`
+- Changing any public API of `@PostNZT/docx-editor`
 - Extracting visual rendering logic (layout painter is already framework-agnostic)
 - Optimizing performance (preserve current behavior exactly)
 

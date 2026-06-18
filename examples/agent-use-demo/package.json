@@ -9,7 +9,7 @@
   "dependencies": {
     "@postnzt/docx-core": "workspace:*",
     "@postnzt/docx-editor-agents": "workspace:*",
-    "@postnzt/docx-js-editor": "workspace:*",
+    "@postnzt/docx-editor": "workspace:*",
     "next": "^15.3.3",
     "openai": "^4.78.0",
     "react": "^19.0.0",

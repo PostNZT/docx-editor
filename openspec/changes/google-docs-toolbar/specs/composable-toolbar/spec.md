@@ -149,7 +149,7 @@ The system SHALL export `EditorToolbar` and all its sub-components (`TitleBar`, 
 
 #### Scenario: Named exports available
 
-- **WHEN** a consumer imports from `@PostNZT/docx-js-editor`
+- **WHEN** a consumer imports from `@PostNZT/docx-editor`
 - **THEN** `EditorToolbar` SHALL be available as a named export
 - **AND** sub-components SHALL be accessible as `EditorToolbar.TitleBar`, `EditorToolbar.Logo`, etc.
 

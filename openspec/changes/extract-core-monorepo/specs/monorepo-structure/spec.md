@@ -30,7 +30,7 @@ The `packages/core/` directory SHALL contain all framework-agnostic source code 
 
 ### Requirement: React package directory structure
 
-The `packages/react/` directory SHALL contain all React-dependent source code with its own `package.json` named `@PostNZT/docx-js-editor`.
+The `packages/react/` directory SHALL contain all React-dependent source code with its own `package.json` named `@PostNZT/docx-editor`.
 
 #### Scenario: React package contains UI modules
 
@@ -82,7 +82,7 @@ Playwright E2E tests SHALL remain functional and test the full integrated editor
 #### Scenario: E2E tests use both packages
 
 - **WHEN** running `npx playwright test` from the root (or a tests directory)
-- **THEN** tests SHALL import from both `@PostNZT/docx-core` and `@PostNZT/docx-js-editor`
+- **THEN** tests SHALL import from both `@PostNZT/docx-core` and `@PostNZT/docx-editor`
 - **AND** all existing tests SHALL pass without modification to test logic
 
 ### Requirement: Cross-framework E2E test reuse

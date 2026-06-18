@@ -3,7 +3,7 @@
 - [x] 1.1 Create `packages/core/` and `packages/react/` directories
 - [x] 1.2 Add `"workspaces": ["packages/*"]` and `"private": true` to root `package.json`
 - [x] 1.3 Create `packages/core/package.json` with name `@PostNZT/docx-core`, dependencies (prosemirror-\*, jszip, pizzip, xml-js, docxtemplater, clsx), and exports config
-- [x] 1.4 Create `packages/react/package.json` with name `@PostNZT/docx-js-editor`, dependency on `@PostNZT/docx-core`, peerDependencies (react, react-dom), and `@radix-ui/react-select`
+- [x] 1.4 Create `packages/react/package.json` with name `@PostNZT/docx-editor`, dependency on `@PostNZT/docx-core`, peerDependencies (react, react-dom), and `@radix-ui/react-select`
 - [x] 1.5 Create `packages/vue/package.json` with name `@PostNZT/docx-editor-vue`, dependency on `@PostNZT/docx-core`, peerDependency on `vue`, and a placeholder `src/index.ts`
 - [x] 1.6 Create `packages/core/tsconfig.json`, `packages/react/tsconfig.json`, and `packages/vue/tsconfig.json` extending a shared root tsconfig
 
@@ -47,7 +47,7 @@
 - [x] 5.5 Update `PluginHost.tsx` in React package to import `ReactEditorPlugin` (aliased locally as `EditorPlugin` for backwards compat)
 - [x] 5.6 Update template plugin to use `ReactEditorPlugin` return type
 - [x] 5.7 Scaffold `VueEditorPlugin` interface in `packages/vue/src/plugin-api/types.ts` extending `EditorPluginCore` with Vue-specific `Panel` and `renderOverlay` types
-- [x] 5.8 Export `ReactEditorPlugin` from `@PostNZT/docx-js-editor` and `VueEditorPlugin` from `@PostNZT/docx-editor-vue`
+- [x] 5.8 Export `ReactEditorPlugin` from `@PostNZT/docx-editor` and `VueEditorPlugin` from `@PostNZT/docx-editor-vue`
 
 ## 6. Update Internal Imports
 
@@ -83,7 +83,7 @@
 
 ## 10. Backwards Compatibility Verification
 
-- [x] 10.1 Verify `@PostNZT/docx-js-editor` main export includes all previously exported symbols
+- [x] 10.1 Verify `@PostNZT/docx-editor` main export includes all previously exported symbols
 - [x] 10.2 Verify subpath exports (`/core`, `/headless`, `/react`, `/ui`, `/core-plugins`, `/mcp`) still work from the React package
 - [x] 10.3 Verify `@PostNZT/docx-core` can be imported and used without React installed
 - [x] 10.4 Update root README with new monorepo structure and usage instructions for core package

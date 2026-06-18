@@ -4,12 +4,12 @@ The editor's core (DOCX parsing, ProseMirror schema/extensions/plugins, layout e
 
 ## What Changes
 
-- **BREAKING**: Split the single `@PostNZT/docx-js-editor` package into a Bun workspaces monorepo with separate packages
+- **BREAKING**: Split the single `@PostNZT/docx-editor` package into a Bun workspaces monorepo with separate packages
 - New `@PostNZT/docx-core` package containing all framework-agnostic code: `src/docx/`, `src/types/`, `src/prosemirror/`, `src/layout-engine/`, `src/layout-painter/`, `src/layout-bridge/`, `src/core-plugins/`, `src/utils/` (non-React parts), `src/agent/`, `src/mcp/`
-- `@PostNZT/docx-js-editor` becomes a thin React UI package depending on `@PostNZT/docx-core`, containing: `src/components/`, `src/hooks/`, `src/plugin-api/`, `src/plugins/`, `src/paged-editor/`
+- `@PostNZT/docx-editor` becomes a thin React UI package depending on `@PostNZT/docx-core`, containing: `src/components/`, `src/hooks/`, `src/plugin-api/`, `src/plugins/`, `src/paged-editor/`
 - Remove React type leaks from core code paths (e.g., `CSSProperties` imports in utils)
 - Split `EditorPlugin` interface into a framework-agnostic core (`EditorPluginCore` in `@PostNZT/docx-core`) and framework-specific adapters (`ReactEditorPlugin` in React package, `VueEditorPlugin` in Vue package)
-- Existing `@PostNZT/docx-js-editor` keeps its npm name and download stats — existing users continue using it as before
+- Existing `@PostNZT/docx-editor` keeps its npm name and download stats — existing users continue using it as before
 - Shared build/test/lint configuration at monorepo root
 
 ## Capabilities
@@ -25,7 +25,7 @@ The editor's core (DOCX parsing, ProseMirror schema/extensions/plugins, layout e
 ## Impact
 
 - **Package structure**: Single package becomes monorepo with 3 packages (core, react, vue scaffold)
-- **npm**: New `@PostNZT/docx-core` package published; `@PostNZT/docx-js-editor` gains `@PostNZT/docx-core` as dependency; `@PostNZT/docx-editor-vue` scaffolded for community contribution
+- **npm**: New `@PostNZT/docx-core` package published; `@PostNZT/docx-editor` gains `@PostNZT/docx-core` as dependency; `@PostNZT/docx-editor-vue` scaffolded for community contribution
 - **Imports**: Internal imports between core and React code change to cross-package imports
 - **Build**: `tsup` config splits into per-package builds; CSS build stays in React package
 - **Tests**: Playwright E2E tests stay in React package (they test the full editor); unit tests for core logic move to core package

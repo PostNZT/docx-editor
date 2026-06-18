@@ -1,5 +1,5 @@
 /**
- * @postnzt/docx-js-editor
+ * @postnzt/docx-editor
  *
  * A complete WYSIWYG DOCX editor with full Microsoft Word fidelity.
  *
@@ -16,7 +16,7 @@
  * CSS Styles:
  * For optimal cursor visibility and selection highlighting, import the editor styles:
  * ```
- * import '@postnzt/docx-js-editor/styles/editor.css';
+ * import '@postnzt/docx-editor/styles/editor.css';
  * ```
  */
 

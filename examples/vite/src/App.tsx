@@ -6,7 +6,7 @@ import {
   PluginHost,
   createTemplatePlugin,
   type ClickedVariable,
-} from '@postnzt/docx-js-editor';
+} from '@postnzt/docx-editor';
 import { ExampleSwitcher } from '../../shared/ExampleSwitcher';
 import { GitHubBadge } from '../../shared/GitHubBadge';
 
