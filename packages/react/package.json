@@ -121,6 +121,10 @@
     "url": "https://github.com/PostNZT/docx-editor.git",
     "directory": "packages/react"
   },
+  "homepage": "https://github.com/PostNZT/docx-editor#readme",
+  "bugs": {
+    "url": "https://github.com/PostNZT/docx-editor/issues"
+  },
   "publishConfig": {
     "access": "public"
   }
