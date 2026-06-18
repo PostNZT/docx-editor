@@ -4,9 +4,10 @@
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     [
-      "@semantic-release/npm",
+      "@semantic-release/exec",
       {
-        "pkgRoot": "packages/react"
+        "prepareCmd": "cd packages/react && npm version ${nextRelease.version} --no-git-tag-version --allow-same-version --no-workspaces",
+        "publishCmd": "cd packages/react && npm publish --no-workspaces --access public --loglevel verbose"
       }
     ],
     "@semantic-release/github"
