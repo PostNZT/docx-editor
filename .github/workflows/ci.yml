@@ -86,6 +86,32 @@ jobs:
       - name: Build
         run: bun run build
 
+      # TEMPORARY diagnostic — prints only the token LENGTH and the npm whoami
+      # result (never the value; GitHub masks the secret regardless). Remove once
+      # the release publishes successfully.
+      - name: 'DEBUG: verify npm auth'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "== NPM_TOKEN diagnostics =="
+          echo "raw length:               ${#NPM_TOKEN}"
+          trimmed="$(printf '%s' "$NPM_TOKEN" | tr -d '[:space:]')"
+          echo "length without whitespace: ${#trimmed}"
+          case "$NPM_TOKEN" in
+            "") echo "RESULT: EMPTY — secret is not reaching this job (wrong name/location?)" ;;
+            npm_*) echo "prefix: OK (starts with npm_)" ;;
+            *) echo "prefix: WRONG — value does not start with npm_" ;;
+          esac
+          echo "== npm whoami (the exact check semantic-release runs) =="
+          npm --version
+          printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" > "$HOME/.npmrc"
+          if npm whoami --registry=https://registry.npmjs.org/; then
+            echo "RESULT: whoami OK — token authenticates; semantic-release should now publish"
+          else
+            echo "RESULT: whoami FAILED — npm rejects this token (IP allowlist / expired / revoked / empty)"
+          fi
+          rm -f "$HOME/.npmrc"
+
       # semantic-release derives the version from Conventional Commits, publishes
       # @postnzt/docx-editor (packages/react) to npm with provenance, then tags and
       # creates the GitHub Release. Config lives in .releaserc.json. The vX.Y.Z git
