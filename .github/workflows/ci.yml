@@ -58,7 +58,7 @@ jobs:
       contents: write # create tags + GitHub Releases
       issues: write # semantic-release comments on resolved issues
       pull-requests: write # semantic-release comments on released PRs
-      id-token: write # npm provenance (OIDC)
+      id-token: write # OIDC for npm trusted publishing (+ automatic provenance)
     concurrency:
       group: release-main
       cancel-in-progress: false
@@ -74,11 +74,12 @@ jobs:
         with:
           bun-version: latest
 
+      # Node 24 ships npm >= 11.5.1, required for trusted publishing (OIDC).
+      # No registry-url: it would write an empty _authToken line that shadows OIDC.
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: '24'
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -87,13 +88,15 @@ jobs:
         run: bun run build
 
       # semantic-release derives the version from Conventional Commits, publishes
-      # @postnzt/docx-editor (packages/react) to npm with provenance, then tags and
-      # creates the GitHub Release. Config lives in .releaserc.json. The vX.Y.Z git
-      # tags are the source of truth for the last released version, so nothing is
-      # committed back to the repo.
+      # @postnzt/docx-editor (packages/react) to npm, then tags and creates the
+      # GitHub Release. Config lives in .releaserc.json. The vX.Y.Z git tags are the
+      # source of truth for the last released version, so nothing is committed back.
+      #
+      # Publishing uses npm Trusted Publishing (OIDC) — no NPM_TOKEN, and provenance
+      # is generated automatically. Requires id-token: write (above) and the
+      # package's Trusted Publisher configured on npmjs.com for repo PostNZT/docx-editor
+      # + workflow ci.yml.
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
         run: npx semantic-release
