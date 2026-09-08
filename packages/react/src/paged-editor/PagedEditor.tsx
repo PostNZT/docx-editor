@@ -119,8 +119,9 @@ import type {
   SectionProperties,
   HeaderFooter,
 } from '@postnzt/docx-core/types/document';
-import type { Footnote } from '@postnzt/docx-core/types/content';
+import type { Footnote, Table } from '@postnzt/docx-core/types/content';
 import { getFootnoteText } from '@postnzt/docx-core/docx/footnoteParser';
+import { headerFooterToProseDoc } from '@postnzt/docx-core/prosemirror/conversion/toProseDoc';
 import {
   collectFootnoteRefs,
   mapFootnotesToPages,
@@ -1384,6 +1385,12 @@ function calculateHeaderFooterVisualBounds(
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     const measure = measures[i];
+    if (block?.kind === 'table' && measure?.kind === 'table') {
+      // A table occupies its measured height in the flow; nothing floats out of it.
+      cursorY += measure.totalHeight;
+      visualBottom = Math.max(visualBottom, cursorY);
+      continue;
+    }
     if (block?.kind !== 'paragraph' || measure?.kind !== 'paragraph') {
       continue;
     }
@@ -1417,13 +1424,23 @@ function calculateHeaderFooterVisualBounds(
  * Fields like PAGE and NUMPAGES are converted to FieldRun which gets
  * substituted with actual values at render time.
  *
+ * Tables are converted through the same ProseMirror bridge the body uses
+ * (`headerFooterToProseDoc` → `toFlowBlocks`), so column widths, spans,
+ * cell borders and images inside cells come out exactly as they do in the
+ * body. A letterhead is usually a borderless table — logo in one cell,
+ * address and contact blocks beside it — and skipping tables here made
+ * every such header render blank.
+ *
  * @param headerFooter - The header/footer document content
  * @param contentWidth - Available width for content
+ * @param metrics - Page metrics for resolving floating image positions
+ * @param styles - Style definitions for resolving table/paragraph styles
  */
 function convertHeaderFooterToContent(
   headerFooter: HeaderFooter | null | undefined,
   contentWidth: number,
-  metrics: HeaderFooterMetrics
+  metrics: HeaderFooterMetrics,
+  styles?: StyleDefinitions | null
 ): HeaderFooterContent | undefined {
   if (!headerFooter || !headerFooter.content || headerFooter.content.length === 0) {
     return undefined;
@@ -1433,6 +1450,16 @@ function convertHeaderFooterToContent(
 
   for (const item of headerFooter.content) {
     const itemObj = item as unknown as Record<string, unknown>;
+
+    if (itemObj.type === 'table') {
+      const pmDoc = headerFooterToProseDoc([item as Table], { styles: styles ?? undefined });
+      for (const block of toFlowBlocks(pmDoc)) {
+        if (block.kind !== 'table') continue;
+        // Header block ids are positional, like the paragraphs around it.
+        blocks.push({ ...block, id: String(blocks.length) });
+      }
+      continue;
+    }
 
     // Check for Document Paragraph type
     if (itemObj.type === 'paragraph' && Array.isArray(itemObj.content)) {
@@ -1557,7 +1584,7 @@ function convertHeaderFooterToContent(
 
   const measures = measureBlocks(blocksForMeasure, contentWidth);
   const totalHeight = measures.reduce((h, m) => {
-    if (m.kind === 'paragraph') {
+    if (m.kind === 'paragraph' || m.kind === 'table') {
       return h + m.totalHeight;
     }
     return h;
@@ -1873,19 +1900,31 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
           const headerContentForRender = convertHeaderFooterToContent(
             headerContent,
             contentWidth,
-            hfMetricsHeader
+            hfMetricsHeader,
+            styles
           );
           const footerContentForRender = convertHeaderFooterToContent(
             footerContent,
             contentWidth,
-            hfMetricsFooter
+            hfMetricsFooter,
+            styles
           );
           const hasTitlePg = sectionProperties?.titlePg === true;
           const firstPageHeaderForRender = hasTitlePg
-            ? convertHeaderFooterToContent(firstPageHeaderContent, contentWidth, hfMetricsHeader)
+            ? convertHeaderFooterToContent(
+                firstPageHeaderContent,
+                contentWidth,
+                hfMetricsHeader,
+                styles
+              )
             : undefined;
           const firstPageFooterForRender = hasTitlePg
-            ? convertHeaderFooterToContent(firstPageFooterContent, contentWidth, hfMetricsFooter)
+            ? convertHeaderFooterToContent(
+                firstPageFooterContent,
+                contentWidth,
+                hfMetricsFooter,
+                styles
+              )
             : undefined;
 
           // Adjust margins if header/footer content exceeds available space
@@ -2106,6 +2145,7 @@ const PagedEditorComponent = forwardRef<PagedEditorRef, PagedEditorProps>(
         firstPageHeaderContent,
         firstPageFooterContent,
         sectionProperties,
+        styles,
         onRenderedDomContextReady,
         document,
         resolvedCommentIds,

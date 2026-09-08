@@ -15,7 +15,10 @@
  */
 import { GlobalRegistrator } from '@happy-dom/global-registrator';
 
-GlobalRegistrator.register();
+// One process runs every test file; Happy DOM can only be registered once.
+if (!GlobalRegistrator.isRegistered) {
+  GlobalRegistrator.register();
+}
 
 import { describe, test, expect } from 'bun:test';
 import { renderParagraphFragment } from './renderParagraph';

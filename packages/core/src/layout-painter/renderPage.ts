@@ -637,9 +637,32 @@ function renderFloatingImagesLayer(
 }
 
 /**
- * Render header or footer content
+ * Where a header/footer table starts horizontally, from its own justification
+ * and indent. The body gets this from the layout engine; header content is
+ * stacked here without one, so it is resolved in place.
  */
-function renderHeaderFooterContent(
+function headerFooterTableX(
+  block: TableBlock,
+  measure: TableMeasure,
+  contentWidth: number
+): number {
+  if (block.justification === 'center') {
+    return Math.max(0, (contentWidth - measure.totalWidth) / 2);
+  }
+  if (block.justification === 'right') {
+    return Math.max(0, contentWidth - measure.totalWidth);
+  }
+  return block.indent ?? 0;
+}
+
+/**
+ * Render header or footer content.
+ *
+ * Paragraphs and tables are stacked top to bottom in document order. A
+ * table renders through `renderTableFragment` — the same painter the body
+ * uses — as a single fragment covering every row; headers never paginate.
+ */
+export function renderHeaderFooterContent(
   content: HeaderFooterContent,
   context: RenderContext,
   options: RenderPageOptions,
@@ -760,6 +783,33 @@ function renderHeaderFooterContent(
 
       containerEl.appendChild(fragEl);
       cursorY += paragraphMeasure.totalHeight;
+    } else if (block?.kind === 'table' && measure?.kind === 'table') {
+      const tableBlock = block as TableBlock;
+      const tableMeasure = measure as TableMeasure;
+      const x = headerFooterTableX(tableBlock, tableMeasure, contentWidth);
+
+      const syntheticFragment: TableFragment = {
+        kind: 'table',
+        blockId: tableBlock.id,
+        x,
+        y: cursorY,
+        width: tableMeasure.totalWidth,
+        height: tableMeasure.totalHeight,
+        fromRow: 0,
+        toRow: tableMeasure.rows.length,
+      };
+
+      const fragEl = renderTableFragment(syntheticFragment, tableBlock, tableMeasure, context, {
+        document: doc,
+      });
+
+      // The table painter positions for a page; here it sits in the flow.
+      fragEl.style.position = 'relative';
+      fragEl.style.left = `${x}px`;
+      fragEl.style.top = '0';
+
+      containerEl.appendChild(fragEl);
+      cursorY += tableMeasure.totalHeight;
     }
   }
 
