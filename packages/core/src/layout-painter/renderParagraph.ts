@@ -22,11 +22,9 @@ import type {
   TabStop,
 } from '../layout-engine/types';
 import { isFloatingImageRun, type RenderContext } from './renderPage';
-import {
-  calculateTabWidth,
-  type TabContext,
-  type TabStop as TabCalcStop,
-} from '../prosemirror/utils/tabCalculator';
+import { measureTab } from '../layout-bridge/measuring/measureTab';
+import { measureTextWidth } from '../layout-bridge/measuring/measureContainer';
+import type { TabContext } from '../prosemirror/utils/tabCalculator';
 import { resolveFontFamily } from '../utils/fontResolver';
 
 /**
@@ -611,66 +609,6 @@ function getInlineImageRunKey(run: ImageRun): string {
 }
 
 /**
- * Convert layout engine TabStop to tab calculator TabStop format
- */
-function convertTabStopToCalc(stop: TabStop): TabCalcStop {
-  return {
-    val: stop.val,
-    pos: stop.pos,
-    leader: stop.leader as TabCalcStop['leader'],
-  };
-}
-
-/**
- * Get the text content immediately following a tab run in the runs array
- * Used for center/end/decimal tab alignment calculations
- */
-function getTextAfterTab(runs: Run[], tabRunIndex: number, context?: RenderContext): string {
-  let text = '';
-  for (let i = tabRunIndex + 1; i < runs.length; i++) {
-    const run = runs[i];
-    if (isTextRun(run)) {
-      text += run.text;
-    } else if (isFieldRun(run)) {
-      // Resolve field values for TOC page numbers
-      if (run.fieldType === 'PAGE' && context) {
-        text += String(context.pageNumber);
-      } else if (run.fieldType === 'NUMPAGES' && context) {
-        text += String(context.totalPages);
-      } else {
-        text += run.fallback ?? '';
-      }
-    } else if (isTabRun(run) || isLineBreakRun(run)) {
-      // Stop at next tab or line break
-      break;
-    }
-  }
-  return text;
-}
-
-/**
- * Create a text measurement function using a temporary canvas
- * Uses the same font fallback chain as measureContainer.ts
- */
-function createTextMeasurer(
-  doc: Document
-): (text: string, fontSize?: number, fontFamily?: string) => number {
-  const canvas = doc.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  return (text: string, fontSize = 11, fontFamily = 'Calibri') => {
-    if (!ctx) return text.length * 7; // Fallback estimate
-    // Use font resolver for category-appropriate fallback stacks,
-    // matching measureContainer.ts
-    const cssFallback = resolveFontFamily(fontFamily).cssFallback;
-    // Convert pt to px for canvas (1pt = 96/72 px)
-    const fontSizePx = (fontSize * 96) / 72;
-    ctx.font = `${fontSizePx}px ${cssFallback}`;
-    return ctx.measureText(text).width;
-  };
-}
-
-/**
  * Render a single line
  *
  * @param block - The paragraph block
@@ -766,12 +704,9 @@ export function renderLine(
   const hasTabRuns = runsForLine.some(isTabRun);
   let tabContext: TabContext | undefined;
 
-  // Always create text measurer for accurate X position tracking
-  const measureText = createTextMeasurer(doc);
-
   if (hasTabRuns) {
     // Convert tab stops from layout engine format to tab calculator format
-    const explicitStops = options?.tabStops?.map(convertTabStopToCalc);
+    const explicitStops = options?.tabStops;
 
     // Convert left indent from pixels to twips for tab calculation
     // The leftIndent serves two purposes in the tab calculator:
@@ -803,16 +738,25 @@ export function renderLine(
     currentX = leftIndentPx;
   }
 
+  currentX += line.leftOffset ?? 0;
+  if (options?.isFirstLine && block.attrs?.listMarker && !block.attrs.listMarkerHidden) {
+    currentX += block.attrs.indent?.hanging ?? block.attrs.indent?.firstLine ?? 24;
+  }
+
   // Render each run
   for (let i = 0; i < runsForLine.length; i++) {
     const run = runsForLine[i];
 
     if (isTabRun(run) && tabContext) {
-      // Get text following this tab for alignment calculations
-      const followingText = getTextAfterTab(runsForLine, i, options?.context);
-
-      // Calculate tab width based on current position
-      const tabResult = calculateTabWidth(currentX, tabContext, followingText, measureText);
+      const tabResult = measureTab(currentX, tabContext, runsForLine, i, (field) => {
+        if (field.fieldType === 'PAGE' && options?.context) {
+          return String(options.context.pageNumber);
+        }
+        if (field.fieldType === 'NUMPAGES' && options?.context) {
+          return String(options.context.totalPages);
+        }
+        return field.fallback ?? '';
+      });
 
       // Render tab with calculated width and leader
       const tabEl = renderTabRun(run, doc, tabResult.width, tabResult.leader);
@@ -846,9 +790,7 @@ export function renderLine(
       lineEl.appendChild(runEl);
 
       // Measure text width for accurate tab position tracking
-      const fontSize = run.fontSize || 11;
-      const fontFamily = run.fontFamily || 'Calibri';
-      currentX += measureText(run.text, fontSize, fontFamily);
+      if (hasTabRuns) currentX += measureTextWidth(run.text, run);
     } else if (isImageRun(run)) {
       // Skip floating images - they're rendered separately at page level.
       // Exception: inside table cells, floating images must render in-flow
@@ -880,9 +822,7 @@ export function renderLine(
       let fieldText = run.fallback ?? '';
       if (run.fieldType === 'PAGE') fieldText = String(options.context.pageNumber);
       else if (run.fieldType === 'NUMPAGES') fieldText = String(options.context.totalPages);
-      const fontSize = run.fontSize || 11;
-      const fontFamily = run.fontFamily || 'Calibri';
-      currentX += measureText(fieldText, fontSize, fontFamily);
+      if (hasTabRuns) currentX += measureTextWidth(fieldText, run);
     } else {
       // Fallback for unknown run types
       const runEl = renderRun(run, doc, options?.context);

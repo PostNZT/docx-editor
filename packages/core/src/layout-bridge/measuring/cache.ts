@@ -262,38 +262,35 @@ const paragraphMeasureCache = new Map<string, ParagraphMeasureEntry>();
  * Used as cache key to identify identical content
  */
 export function hashParagraphBlock(block: ParagraphBlock): string {
-  // Simple hash based on runs content
-  const parts: string[] = [];
-
-  for (const run of block.runs) {
-    if (run.kind === 'text') {
-      parts.push(`t:${run.text}|${run.fontFamily}|${run.fontSize}|${run.bold}|${run.italic}`);
-    } else if (run.kind === 'tab') {
-      parts.push(`tab:${run.width}`);
-    } else if (run.kind === 'image') {
-      parts.push(`img:${run.width}x${run.height}`);
-    } else if (run.kind === 'lineBreak') {
-      parts.push('br');
+  // Include every input used by paragraph measurement. Positions and image
+  // payloads do not affect geometry and would prevent useful cache reuse.
+  const runs = block.runs.map((run) => {
+    if (run.kind === 'lineBreak') return { kind: run.kind };
+    if (run.kind === 'image') {
+      return {
+        kind: run.kind,
+        width: run.width,
+        height: run.height,
+        displayMode: run.displayMode,
+        wrapType: run.wrapType,
+        position: run.position,
+        distTop: run.distTop,
+        distBottom: run.distBottom,
+      };
     }
-  }
-
-  // Include relevant attrs in hash
-  const attrs = block.attrs;
-  if (attrs) {
-    if (attrs.alignment) parts.push(`align:${attrs.alignment}`);
-    if (attrs.indent) {
-      parts.push(
-        `indent:${attrs.indent.left}|${attrs.indent.right}|${attrs.indent.firstLine}|${attrs.indent.hanging}`
-      );
-    }
-    if (attrs.spacing) {
-      parts.push(
-        `spacing:${attrs.spacing.before}|${attrs.spacing.after}|${attrs.spacing.line}|${attrs.spacing.lineRule}`
-      );
-    }
-  }
-
-  return parts.join('||');
+    return {
+      kind: run.kind,
+      fontFamily: run.fontFamily,
+      fontSize: run.fontSize,
+      bold: run.bold,
+      italic: run.italic,
+      letterSpacing: run.letterSpacing,
+      ...(run.kind === 'text' ? { text: run.text } : {}),
+      ...(run.kind === 'field' ? { fieldType: run.fieldType, fallback: run.fallback } : {}),
+    };
+  });
+  // JSON keeps literal delimiters in document text from colliding with metadata.
+  return JSON.stringify({ runs, attrs: block.attrs });
 }
 
 /**

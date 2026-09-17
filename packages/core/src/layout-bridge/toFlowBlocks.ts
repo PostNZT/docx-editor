@@ -150,6 +150,12 @@ function extractRunFormatting(marks: readonly Mark[], theme?: Theme | null): Run
         formatting.smallCaps = true;
         break;
 
+      case 'characterSpacing':
+        if (mark.attrs.spacing != null) {
+          formatting.letterSpacing = twipsToPixels(mark.attrs.spacing as number);
+        }
+        break;
+
       case 'textColor': {
         const attrs = mark.attrs as TextColorAttrs;
         if (attrs.themeColor || attrs.rgb) {

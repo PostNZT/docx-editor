@@ -130,10 +130,10 @@ export function computeTabStops(context: TabContext): TabStop[] {
     }
   }
 
-  // Generate default stops at regular intervals
-  // Start from leftIndent and go up to ~10 inches
+  // Default stops stay on the grid measured from the paragraph's margin;
+  // neither an indent nor an off-grid explicit stop shifts that grid.
   const startPos = maxExplicit > 0 ? Math.max(maxExplicit, leftIndent) : leftIndent;
-  let pos = startPos;
+  let pos = Math.floor(startPos / defaultTabInterval) * defaultTabInterval;
   const limitPos = leftIndent + 14400; // 14400 twips = 10 inches
 
   while (pos < limitPos) {
@@ -215,8 +215,8 @@ export function calculateTabWidth(
     }
   } else if (nextStop.val === 'decimal') {
     const decimalIndex = followingText.indexOf(decimalSeparator);
-    if (decimalIndex >= 0 && measureText) {
-      const before = followingText.slice(0, decimalIndex);
+    if (measureText) {
+      const before = decimalIndex >= 0 ? followingText.slice(0, decimalIndex) : followingText;
       const beforeWidth = measureText(before);
       width -= beforeWidth;
     }

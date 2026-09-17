@@ -50,6 +50,16 @@ describe('computeTabStops', () => {
     expect(stops[1].pos).toBe(2880);
   });
 
+  it('keeps the default grid after an off-grid explicit stop', () => {
+    const stops = computeTabStops({ explicitStops: [{ val: 'start', pos: 1000 }] });
+    expect(stops.slice(0, 3).map((stop) => stop.pos)).toEqual([1000, 1440, 2160]);
+  });
+
+  it('keeps the default grid after an off-grid indent', () => {
+    const stops = computeTabStops({ leftIndent: 300 });
+    expect(stops.slice(0, 3).map((stop) => stop.pos)).toEqual([300, 720, 1440]);
+  });
+
   it('includes explicit stops', () => {
     const stops = computeTabStops({
       explicitStops: [

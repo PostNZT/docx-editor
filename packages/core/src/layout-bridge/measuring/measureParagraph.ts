@@ -23,10 +23,11 @@ import {
   measureRun,
   getFontMetrics,
   ptToPx,
-  twipsToPx,
   type FontStyle,
   type FontMetrics,
 } from './measureContainer';
+
+import { measureTab } from './measureTab';
 
 import { DEFAULT_SINGLE_LINE_RATIO } from '../../utils/fontResolver';
 
@@ -45,26 +46,6 @@ const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.0; // OOXML spec default: single spacin
 // the editor while Word wrapped them. We keep only a tiny epsilon to absorb
 // floating-point noise in width accumulation.
 const WIDTH_TOLERANCE = 0.25;
-
-/**
- * Compute the width a tab character should advance to reach the next tab stop.
- */
-function computeTabWidth(
-  currentPos: number,
-  tabStops: { pos: number; val: string }[] | undefined
-): number {
-  if (tabStops && tabStops.length > 0) {
-    for (const stop of tabStops) {
-      const stopPx = twipsToPx(stop.pos);
-      if (stopPx > currentPos + 0.5) {
-        return Math.max(1, stopPx - currentPos);
-      }
-    }
-  }
-  // No matching stop — advance to next default interval
-  const remainder = currentPos % DEFAULT_TAB_WIDTH;
-  return Math.max(1, remainder < 0.5 ? DEFAULT_TAB_WIDTH : DEFAULT_TAB_WIDTH - remainder);
-}
 
 /**
  * Find the longest prefix of `text` that fits within `maxWidth` pixels.
@@ -293,11 +274,6 @@ function findWordBreaks(text: string): number[] {
 
   return breaks;
 }
-
-/**
- * Default tab width in pixels (0.5 inch at 96 DPI)
- */
-const DEFAULT_TAB_WIDTH = 48;
 
 /**
  * Calculate width reduction for a line based on floating image zones.
@@ -576,21 +552,25 @@ export function measureParagraph(
       // extra word before the right indent and the painter then drew it
       // overflowing the margin (e.g. a case-number caption kept "…24-16716-MAM"
       // on line 1 where Word/Google wrap it to the next line).
-      const tabStops = attrs?.tabs;
-      const indentLeftPx = indent?.left ?? 0;
-      // List first lines reserve the hanging space for the marker box, so their
-      // text origin sits at indentLeft (not pulled left); only plain hanging/
-      // first-line indents shift the tab origin.
-      const isFirstLine = lines.length === 0;
-      const originOffset =
-        isFirstLine && !attrs?.listMarker ? indentLeftPx + firstLineOffset : indentLeftPx;
-      const currentPos = currentLine.width + originOffset + (currentLine.leftOffset ?? 0);
-      const tabWidth = computeTabWidth(currentPos, tabStops);
+      const getTabWidth = () => {
+        const indentLeftPx = indent?.left ?? 0;
+        const originOffset =
+          indentLeftPx + (lines.length === 0 ? firstLineOffset + markerReserve : 0);
+        const currentPos = currentLine.width + originOffset + (currentLine.leftOffset ?? 0);
+        return measureTab(
+          currentPos,
+          { explicitStops: attrs?.tabs, leftIndent: indentLeftPx * 15 },
+          runs,
+          runIndex
+        ).width;
+      };
+      let tabWidth = getTabWidth();
 
       if (currentLine.width + tabWidth > currentLine.availableWidth + WIDTH_TOLERANCE) {
-        // Tab doesn't fit, start new line
+        // Recalculate from the new line's origin after wrapping.
         startNewLine(runIndex, 0);
         updateMaxFont(style);
+        tabWidth = getTabWidth();
       }
 
       currentLine.width += tabWidth;
